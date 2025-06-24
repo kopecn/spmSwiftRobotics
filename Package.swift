@@ -15,13 +15,15 @@ let package = Package(
             targets: ["SwiftRobotics"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/keyvariable/kvSIMD.swift.git", from: "1.1.0")
+        .package(url: "https://github.com/keyvariable/kvSIMD.swift.git", from: "1.1.0"),
+        // .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
     ],
     targets: [
         .executableTarget(
             name: "SwiftRoboticVisualizer",
             dependencies: [
-                "SwiftRobotics"
+                "SwiftRobotics",
+                // .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources/SwiftRoboticVisualizer"
         ),
