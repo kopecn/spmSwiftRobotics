@@ -34,6 +34,10 @@ let package = Package(
             ],
             path: "Sources/SwiftRobotics"
         ),
+        .target(
+            name: "SwiftRoboticAssets",
+            path: "Sources/SwiftRoboticAssets"
+        ),
         .testTarget(
             name: "SwiftRoboticsTests",
             dependencies: ["SwiftRobotics"],
