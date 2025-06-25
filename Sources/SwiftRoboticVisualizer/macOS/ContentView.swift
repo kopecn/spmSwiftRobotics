@@ -1,3 +1,5 @@
+#if os(macOS)
+
 import SwiftUI
 struct ContentView: View {
     var body: some View {
@@ -10,3 +12,5 @@ struct ContentView: View {
         }
     }
 }
+
+#endif

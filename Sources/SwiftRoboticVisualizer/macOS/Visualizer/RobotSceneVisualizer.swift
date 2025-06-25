@@ -1,3 +1,6 @@
+
+#if os(macOS)
+
 import SwiftUI
 import SceneKit
 import AppKit
@@ -39,3 +42,5 @@ struct SceneViewContainer: NSViewRepresentable {
         // Update the scene if needed
     }
 }
+
+#endif
