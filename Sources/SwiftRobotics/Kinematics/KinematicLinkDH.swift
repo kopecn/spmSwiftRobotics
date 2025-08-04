@@ -13,24 +13,41 @@ public class KinematicLinkDH: KinematicLinkProtocol {
     // MARK: - Properties
     /// Link length (distance along x axis)
     public let a: Double
+    /// Link twist (angle in radians around x axis)
+    public let alpha: Double
     /// sine of the link twist (angle in radians around x axis)
     public let sa: Double
     /// cosine of the link twist (angle in radians around x axis)
     public let ca: Double
     ///Link offset (distance along z axis)
     public let d: Double
-
+    /// Mass
+    public var mass: Double?
+    /// Center of mass
+    public var centerOfMass: Array<Double>?
+    /// Inertia matrix
+    public var inertiaMatrix: Array<Double>?
 
     public init(
         id: UUID = UUID(),
         a: Double,
-        d: Double
+        alpha: Double,
+        d: Double,
+        mass: Double? = nil,
+        centerOfMass: Array<Double>? = nil,
+        inertiaMatrix: Array<Double>? = nil,
+        renderingAsset: RobotRenderingAssetType? = nil
     ) {
         self.id = id
         self.a = a
-        self.sa = sin(a)
-        self.ca = cos(a)
+        self.alpha = alpha
+        self.sa = sin(alpha)
+        self.ca = cos(alpha)
         self.d = d
+        self.mass = mass
+        self.centerOfMass = centerOfMass
+        self.inertiaMatrix = inertiaMatrix
+        self.renderingAsset = renderingAsset
     }
 
     public func getPose(theta: Double) -> simd_double4x4 {
