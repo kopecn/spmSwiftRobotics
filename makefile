@@ -1,13 +1,17 @@
 
-
 clean:
 	swift package clean
 
-build:
-	swift build
+deploy:
+	swift build -c release
+	# cp -f .build/release/cliOTG /usr/local/bin/cliOTG
+
+run:
+	swift run
+
 test:
 	swift test
 
-all: clean build test
-run:
-	swift run
+format: 
+	swift-format Sources --recursive -i
+	swift-format Tests --recursive -i

@@ -12,7 +12,7 @@ let package = Package(
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "SwiftRobotics",
-            targets: ["SwiftRobotics"]),
+            targets: ["SwiftRobotics"])
     ],
     dependencies: [
         .package(url: "https://github.com/keyvariable/kvSIMD.swift.git", from: "1.1.0"),

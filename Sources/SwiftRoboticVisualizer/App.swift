@@ -1,7 +1,8 @@
 
 // MARK: - Linux
-#if os(Linux)
+#if os(Linux) || os(macOS)
 
+import Foundation
 import SwiftCrossUI
 import DefaultBackend
 
