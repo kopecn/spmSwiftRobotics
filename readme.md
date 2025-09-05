@@ -1,7 +1,19 @@
 # Swift Robotics Code Base
 
-# Installation
-## Notes on GTK-4 for Linux UI
+## Layout
+
+```mermaid
+flowchart LR
+    SwiftRoboticAssets
+    SwiftRoboticVisualizer([SwiftRoboticVisualizer])-->DefaultBackend[[DefaultBackend]]
+    SwiftRoboticVisualizer([SwiftRoboticVisualizer])-->SwiftCrossUI[[SwiftCrossUI]]
+    SwiftRoboticVisualizer([SwiftRoboticVisualizer])-->SwiftRobotics
+    SwiftRobotics-->kvSIMD[[kvSIMD]]
+    SwiftRoboticsTests{{SwiftRoboticsTests}}-->SwiftRobotics
+```
+
+## Installation
+### Notes on GTK-4 for Linux UI
 
 ```
 ### Debian-based distros

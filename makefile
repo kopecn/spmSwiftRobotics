@@ -71,6 +71,9 @@ tag: checkGitClean version  ## Tag the current version in git
 	git tag -a v$$(make version) -m "Release v$$(make version)"
 	git push origin v$$(make version)
 
+mermaid: ## Create the mermaid layout for this project
+	swift package plugin depermaid --test --executable --product
+
 release: clean build test install  ## Full release process
 
 checkGitClean:
