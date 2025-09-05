@@ -3,7 +3,7 @@
 ## Layout
 
 ```mermaid
-flowchart LR
+flowchart TD
     SwiftRoboticAssets
     SwiftRoboticVisualizer([SwiftRoboticVisualizer])-->DefaultBackend[[DefaultBackend]]
     SwiftRoboticVisualizer([SwiftRoboticVisualizer])-->SwiftCrossUI[[SwiftCrossUI]]

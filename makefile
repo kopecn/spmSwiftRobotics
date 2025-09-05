@@ -72,7 +72,7 @@ tag: checkGitClean version  ## Tag the current version in git
 	git push origin v$$(make version)
 
 mermaid: ## Create the mermaid layout for this project
-	swift package plugin depermaid --test --executable --product
+	swift package plugin depermaid --direction TD --test --executable --product
 
 release: clean build test install  ## Full release process
 
