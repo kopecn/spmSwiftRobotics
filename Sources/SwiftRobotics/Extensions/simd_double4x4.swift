@@ -1,7 +1,6 @@
 import simd
 
 extension simd_double4x4 {
-
     /// Initialize a transformation matrix using standard Denavit-Hartenberg parameters.
     /// - Parameters:
     ///   - a: Link length (distance along x axis)
@@ -15,10 +14,10 @@ extension simd_double4x4 {
         let sa: Double = sin(alpha)
 
         self.init(columns: (
-            SIMD4<Double>(ct,        st,        0,        0),
-            SIMD4<Double>(-st * ca,  ct * ca,   sa,       0),
-            SIMD4<Double>(st * sa,  -ct * sa,   ca,       0),
-            SIMD4<Double>(a * ct,    a * st,    d,        1)
+            SIMD4<Double>(ct, st, 0, 0),
+            SIMD4<Double>(-st * ca, ct * ca, sa, 0),
+            SIMD4<Double>(st * sa, -ct * sa, ca, 0),
+            SIMD4<Double>(a * ct, a * st, d, 1)
         ))
     }
 
@@ -35,10 +34,10 @@ extension simd_double4x4 {
         let st: Double = sin(theta)
 
         self.init(columns: (
-            SIMD4<Double>(ct,        st,        0,        0),
-            SIMD4<Double>(-st * ca,  ct * ca,   sa,       0),
-            SIMD4<Double>(st * sa,  -ct * sa,   ca,       0),
-            SIMD4<Double>(a * ct,    a * st,    d,        1)
+            SIMD4<Double>(ct, st, 0, 0),
+            SIMD4<Double>(-st * ca, ct * ca, sa, 0),
+            SIMD4<Double>(st * sa, -ct * sa, ca, 0),
+            SIMD4<Double>(a * ct, a * st, d, 1)
         ))
     }
 }

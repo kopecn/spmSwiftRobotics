@@ -1,6 +1,5 @@
 import simd
 
-
 public class PoseRobot {
     public var pose: simd_double4x4
 

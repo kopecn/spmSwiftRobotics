@@ -3,14 +3,14 @@ import simd
 
 /// A kinematic link using Denavit-Hartenberg parameters
 public class KinematicLinkDH: KinematicLinkProtocol {
-
     // MARK: - Protocol Properties
+
     public var id: UUID
     public var type: KinematicLinkType = .devHart
     public var renderingAsset: RobotRenderingAssetType?
 
-
     // MARK: - Properties
+
     /// Link length (distance along x axis)
     public let a: Double
     /// Link twist (angle in radians around x axis)
@@ -19,14 +19,14 @@ public class KinematicLinkDH: KinematicLinkProtocol {
     public let sa: Double
     /// cosine of the link twist (angle in radians around x axis)
     public let ca: Double
-    ///Link offset (distance along z axis)
+    /// Link offset (distance along z axis)
     public let d: Double
     /// Mass
     public var mass: Double?
     /// Center of mass
-    public var centerOfMass: Array<Double>?
+    public var centerOfMass: [Double]?
     /// Inertia matrix
-    public var inertiaMatrix: Array<Double>?
+    public var inertiaMatrix: [Double]?
 
     public init(
         id: UUID = UUID(),
@@ -34,15 +34,15 @@ public class KinematicLinkDH: KinematicLinkProtocol {
         alpha: Double,
         d: Double,
         mass: Double? = nil,
-        centerOfMass: Array<Double>? = nil,
-        inertiaMatrix: Array<Double>? = nil,
+        centerOfMass: [Double]? = nil,
+        inertiaMatrix: [Double]? = nil,
         renderingAsset: RobotRenderingAssetType? = nil
     ) {
         self.id = id
         self.a = a
         self.alpha = alpha
-        self.sa = sin(alpha)
-        self.ca = cos(alpha)
+        sa = sin(alpha)
+        ca = cos(alpha)
         self.d = d
         self.mass = mass
         self.centerOfMass = centerOfMass
@@ -51,6 +51,6 @@ public class KinematicLinkDH: KinematicLinkProtocol {
     }
 
     public func getPose(theta: Double) -> simd_double4x4 {
-        return simd_double4x4(denavitHartenberg: a, ca: ca, sa: sa, d: d, theta: theta)
+        simd_double4x4(denavitHartenberg: a, ca: ca, sa: sa, d: d, theta: theta)
     }
 }
