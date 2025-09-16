@@ -6,6 +6,7 @@ APP_NAME = SwiftRoboticVisualizer
 BUILD_DIR = .build
 BIN_PATH = $(BUILD_DIR)/release/$(APP_NAME)
 INSTALL_PATH = /usr/local/bin/$(APP_NAME)
+CONFIG=./.swift-format.json
 
 help:  ## Show available make commands with descriptions
 	@awk 'BEGIN {FS = ":.*?## "}; /^[a-zA-Z0-9_-]+:.*?## / {printf "%-20s -> %s\n", $$1, $$2}' $(MAKEFILE_LIST)
