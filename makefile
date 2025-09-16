@@ -1,8 +1,8 @@
-.PHONY: help clean build run test format lint install release tag version checkGitClean
+.PHONY: help clean build run test format lint install uninstall release tag version checkGitClean mermaid bump-patch bump-minor bump-major update-packages
 
 .DEFAULT_GOAL := help
 
-APP_NAME = cliOTG
+APP_NAME = SwiftRoboticVisualizer
 BUILD_DIR = .build
 BIN_PATH = $(BUILD_DIR)/release/$(APP_NAME)
 INSTALL_PATH = /usr/local/bin/$(APP_NAME)
@@ -23,38 +23,43 @@ run:  ## Run the app
 test:  ## Run tests
 	swift test
 
-format:  ## Format code using swift-format
-	swift-format format --in-place --recursive Sources
-	swift-format format --in-place --recursive Tests
+update-packages: ## 
+	swift package update
 
-lint:  ## Lint code (uses swift-format for simplicity)
-	swift-format lint --recursive Sources
-	swift-format lint --recursive Tests
+format:  ## Format code using swift-format with explicit config
+	swift-format --configuration $(CONFIG) format --in-place --recursive spm/Sources
+	swift-format --configuration $(CONFIG) format --in-place --recursive spm/Tests
 
 bump-patch:  ## Bump patch version (e.g., 1.2.3 → 1.2.4)
-	@CURRENT=$$(git describe --tags --abbrev=0 | sed 's/^v//' ); \
-	IFS=. read -r MAJOR MINOR PATCH <<< $$CURRENT; \
+	@CURRENT=$$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0"); \
+	MAJOR=$$(echo $$CURRENT | cut -d. -f1); \
+	MINOR=$$(echo $$CURRENT | cut -d. -f2); \
+	PATCH=$$(echo $$CURRENT | cut -d. -f3); \
 	NEW_VERSION="v$$MAJOR.$$MINOR.$$((PATCH + 1))"; \
 	echo "Bumping to $$NEW_VERSION"; \
 	git tag -a $$NEW_VERSION -m "Version $$NEW_VERSION"; \
 	git push origin $$NEW_VERSION
-
+	
 bump-minor:  ## Bump minor version (e.g., 1.2.3 → 1.3.0)
-	@CURRENT=$$(git describe --tags --abbrev=0 | sed 's/^v//' ); \
-	IFS=. read -r MAJOR MINOR PATCH <<< $$CURRENT; \
+	@CURRENT=$$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0"); \
+	MAJOR=$$(echo $$CURRENT | cut -d. -f1); \
+	MINOR=$$(echo $$CURRENT | cut -d. -f2); \
+	# PATCH is not used here but you can still get it if needed: PATCH=$$(echo $$CURRENT | cut -d. -f3); \
 	NEW_VERSION="v$$MAJOR.$$((MINOR + 1)).0"; \
 	echo "Bumping to $$NEW_VERSION"; \
 	git tag -a $$NEW_VERSION -m "Version $$NEW_VERSION"; \
 	git push origin $$NEW_VERSION
 
 bump-major:  ## Bump major version (e.g., 1.2.3 → 2.0.0)
-	@CURRENT=$$(git describe --tags --abbrev=0 | sed 's/^v//' ); \
-	IFS=. read -r MAJOR MINOR PATCH <<< $$CURRENT; \
+	@CURRENT=$$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0"); \
+	MAJOR=$$(echo $$CURRENT | cut -d. -f1); \
+	# MINOR and PATCH are not used here but you can get them if needed: \
+	# MINOR=$$(echo $$CURRENT | cut -d. -f2); \
+	# PATCH=$$(echo $$CURRENT | cut -d. -f3); \
 	NEW_VERSION="v$$((MAJOR + 1)).0.0"; \
 	echo "Bumping to $$NEW_VERSION"; \
 	git tag -a $$NEW_VERSION -m "Version $$NEW_VERSION"; \
 	git push origin $$NEW_VERSION
-
 
 install: build  ## Install binary to /usr/local/bin
 	cp -f $(BIN_PATH) $(INSTALL_PATH)
