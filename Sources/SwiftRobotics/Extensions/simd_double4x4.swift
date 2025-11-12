@@ -13,12 +13,14 @@ extension simd_double4x4 {
         let ca: Double = cos(alpha)
         let sa: Double = sin(alpha)
 
-        self.init(columns: (
-            SIMD4<Double>(ct, st, 0, 0),
-            SIMD4<Double>(-st * ca, ct * ca, sa, 0),
-            SIMD4<Double>(st * sa, -ct * sa, ca, 0),
-            SIMD4<Double>(a * ct, a * st, d, 1)
-        ))
+        self.init(
+            columns: (
+                SIMD4<Double>(ct, st, 0, 0),
+                SIMD4<Double>(-st * ca, ct * ca, sa, 0),
+                SIMD4<Double>(st * sa, -ct * sa, ca, 0),
+                SIMD4<Double>(a * ct, a * st, d, 1)
+            )
+        )
     }
 
     /// Initialize a transformation matrix using standard Denavit-Hartenberg parameters.
@@ -33,11 +35,13 @@ extension simd_double4x4 {
         let ct: Double = cos(theta)
         let st: Double = sin(theta)
 
-        self.init(columns: (
-            SIMD4<Double>(ct, st, 0, 0),
-            SIMD4<Double>(-st * ca, ct * ca, sa, 0),
-            SIMD4<Double>(st * sa, -ct * sa, ca, 0),
-            SIMD4<Double>(a * ct, a * st, d, 1)
-        ))
+        self.init(
+            columns: (
+                SIMD4<Double>(ct, st, 0, 0),
+                SIMD4<Double>(-st * ca, ct * ca, sa, 0),
+                SIMD4<Double>(st * sa, -ct * sa, ca, 0),
+                SIMD4<Double>(a * ct, a * st, d, 1)
+            )
+        )
     }
 }

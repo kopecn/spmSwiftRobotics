@@ -1,4 +1,3 @@
-
 /// URRobotPostureType.swift
 /// This file defines the posture types for UR robots, which are used to describe the configuration of the robot's joints.
 /// Each posture type corresponds to a specific arrangement of the robot's shoulder, elbow, and wrist joints.

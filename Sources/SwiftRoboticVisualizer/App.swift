@@ -1,39 +1,38 @@
-
 // MARK: - Linux
 
 #if os(Linux) || os(macOS)
 
-    import DefaultBackend
-    import Foundation
-    import SwiftCrossUI
+import DefaultBackend
+import Foundation
+import SwiftCrossUI
 
-    @main
-    struct YourApp: App {
-        @State var count = 0
+@main
+struct YourApp: App {
+    @State var count = 0
 
-        var body: some Scene {
-            WindowGroup("YourApp") {
-                HStack {
-                    Button("-") { count -= 1 }
-                    Text("Count: \(count)")
-                    Button("+") { count += 1 }
-                }.padding()
-            }
+    var body: some Scene {
+        WindowGroup("YourApp") {
+            HStack {
+                Button("-") { count -= 1 }
+                Text("Count: \(count)")
+                Button("+") { count += 1 }
+            }.padding()
         }
     }
+}
 
 // MARK: - macOS
 
 ///  Flagged off for now
-#else // #elseif os(macOS)
-    import SwiftUI
+#else  // #elseif os(macOS)
+import SwiftUI
 
-    @main
-    struct MyApp: App {
-        var body: some Scene {
-            WindowGroup {
-                ContentView()
-            }
+@main
+struct MyApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
         }
     }
+}
 #endif

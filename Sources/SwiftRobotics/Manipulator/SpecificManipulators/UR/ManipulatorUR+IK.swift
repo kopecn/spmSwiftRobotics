@@ -36,8 +36,8 @@ extension ManipulatorUR {
         whichPose: URRobotPostureType,
         jointWrap: (Int, Int, Int, Int, Int, Int, Int, Int),
     ) -> [PostureSerialRobot] {
-        guard  let d6 = (links[5] as? KinematicLinkDH)?.d,
-               let d4 = (links[3] as? KinematicLinkDH)?.d
+        guard let d6 = (links[5] as? KinematicLinkDH)?.d,
+            let d4 = (links[3] as? KinematicLinkDH)?.d
         else {
             return []
         }
@@ -56,8 +56,10 @@ extension ManipulatorUR {
 
         // +/- correspond to the shoulder being either “left” or “right,”
         var jointAngles: [[Double]] = [
-            [theta0Left, 0, 0, 0, 0, 0], [theta0Left, 0, 0, 0, 0, 0], [theta0Left, 0, 0, 0, 0, 0], [theta0Left, 0, 0, 0, 0, 0],
-            [theta0Right, 0, 0, 0, 0, 0], [theta0Right, 0, 0, 0, 0, 0], [theta0Right, 0, 0, 0, 0, 0], [theta0Right, 0, 0, 0, 0, 0],
+            [theta0Left, 0, 0, 0, 0, 0], [theta0Left, 0, 0, 0, 0, 0], [theta0Left, 0, 0, 0, 0, 0],
+            [theta0Left, 0, 0, 0, 0, 0],
+            [theta0Right, 0, 0, 0, 0, 0], [theta0Right, 0, 0, 0, 0, 0], [theta0Right, 0, 0, 0, 0, 0],
+            [theta0Right, 0, 0, 0, 0, 0],
         ]
 
         let vector1to6zLeft = vector1to6z(pose: pose.pose, theta: theta0Left)

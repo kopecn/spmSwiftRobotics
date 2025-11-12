@@ -28,8 +28,8 @@ update-packages: ##
 	swift package update
 
 format:  ## Format code using swift-format with explicit config
-	swift-format --configuration $(CONFIG) format --in-place --recursive spm/Sources
-	swift-format --configuration $(CONFIG) format --in-place --recursive spm/Tests
+	swift-format --configuration $(CONFIG) format --in-place --recursive Sources
+	swift-format --configuration $(CONFIG) format --in-place --recursive Tests
 
 bump-patch:  ## Bump patch version (e.g., 1.2.3 → 1.2.4)
 	@CURRENT=$$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0"); \
