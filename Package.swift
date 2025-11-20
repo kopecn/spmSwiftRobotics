@@ -16,31 +16,35 @@ let package = Package(
         ),
     ],
     dependencies: [
+        .package(url: "git@github.com:kopecn/spmFoundationTools.git", branch: "dev"),
+        .package(url: "git@github.com:kopecn/spmSocketHandlers.git", branch: "dev"),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/keyvariable/kvSIMD.swift.git", from: "1.1.0"),
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "1.3.0"),
-        .package(url: "https://github.com/stackotter/swift-cross-ui", branch: "main"),
+        .package(url: "https://github.com/OpenCombine/OpenCombine", from: "0.14.0"),
         .package(url: "https://github.com/daikimat/depermaid.git", from: "1.1.0"),
     ],
     targets: [
-        .executableTarget(
-            name: "SwiftRoboticVisualizer",
-            dependencies: [
-                "SwiftRobotics",
-                .product(name: "SwiftCrossUI", package: "swift-cross-ui"),
-                .product(name: "DefaultBackend", package: "swift-cross-ui"),
-            ],
-            path: "Sources/SwiftRoboticVisualizer"
-        ),
         .target(
             name: "SwiftRobotics",
             dependencies: [
+                "SwiftRoboticAssets",
+                .product(name: "NIOHandler", package: "spmSocketHandlers"),
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "OpenCombine", package: "OpenCombine"),
+                .product(name: "OpenCombineDispatch", package: "OpenCombine"),
+                .product(name: "FoundationTools", package: "spmFoundationTools"),
+                .product(name: "FoundationCommon", package: "spmFoundationTools"),
+                .product(name: "FoundationTypes", package: "spmFoundationTools"),
                 .product(name: "kvSIMD", package: "kvSIMD.swift"),
             ],
             path: "Sources/SwiftRobotics"
         ),
         .target(
             name: "SwiftRoboticAssets",
-            path: "Sources/SwiftRoboticAssets"
+            path: "Sources/SwiftRoboticAssets",
+            resources: [
+                .process("Assets")
+            ]
         ),
         .testTarget(
             name: "SwiftRoboticsTests",

@@ -21,6 +21,7 @@ The main library providing robotics functionality:
   - `ManipulatorProtocol`: Protocol for manipulator implementations
   - `ManipulatorSerial`: Serial manipulator implementation
   - Specific robot implementations (e.g., Universal Robots UR series)
+    - for Universal Robot urScript development refer to API in .md located in `.claude/spec.md`
 
 - **Support**: Utility types and extensions
   - `RobotRenderingAssetType`: Asset management for 3D rendering

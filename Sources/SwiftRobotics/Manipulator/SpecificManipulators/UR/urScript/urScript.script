@@ -1,0 +1,655 @@
+# ===================================================================
+# URScript Command and Control with Streaming Buffer
+# ===================================================================
+# This script implements a three-threaded system for robot control:
+# 1. Command and Control thread - handles discrete commands
+# 2. Streaming Handler thread - manages motion buffer
+# 3. Execution thread - executes buffered motion commands
+# ===================================================================
+
+### all control flow -- True is Error, False is success ###
+
+def body():
+    script_version = "1.0.0"
+    textmsg("--- Successful Download --- ", script_version)
+
+    # --- Globals ---
+    global motionEnabled = True
+
+    global con = struct(host_ip = "192.168.3.2",command_port = 50001,streaming_port = 50002,command_socket_name = "socket_cmd",streaming_socket_name = "socket_stream",buffer_size = 250,buffer_refill_threshold = 25,poses_per_fill = 5,home_position = [0.0, -1.04719, -2.09441, -1.57082, -1.57082, -1.57082],max_joint_velocity = 1.05,max_joint_acceleration = 1.4,servoj_time = 0.002,servoj_lookahead = 0.1,servoj_gain = 300,socket_timeout = 2.0,reconnect_delay = 1.0,ack_success = 0,ack_parse_error = 1,ack_cmd_not_found = 2,res_suc = 0,res_error = 1,steadyThreshold = 0.0025)
+
+
+    # Shutdown flag
+    global shutdown_requested = False
+    # Streaming state
+    global streaming_active = False
+
+    # Ring Buffer Struct - contains all buffer state and data
+    # Structure: struct with members:
+    #   - data: flat list storing joint positions [pose0_j0, pose0_j1, ..., pose0_j5, pose1_j0, ..., poseN_j5]
+    #   - head: where next element is WRITTEN (producer writes here, 0 to con.buffer_size-1)
+    #   - tail: where next element is READ (consumer reads here, 0 to con.buffer_size-1)
+    #   - count: number of valid poses in buffer (0 to con.buffer_size)
+    # Access: pose P, joint J = ring_buffer.data[P * 6 + J]
+    # Ring Buffer Behavior:
+    #   - Writes always succeed (may overwrite oldest data when full)
+    #   - When full and writing, tail advances (oldest data discarded)
+    #   - Both head and tail wrap circularly using modulo
+    global ring_buffer = struct(data = make_list(con.buffer_size * 6, 0.0, con.buffer_size * 6),head = 0,tail = 0,count = 0,isPrimed = False,trID="-1")
+
+
+    def send_message(socket_name, message):
+        # Send message with newline terminator
+        # Returns True on error, False on success
+        # Note: URScript requires actual newline, not "\n" string literal
+        return not socket_send_line(str_cat(message, ""), socket_name)
+    end
+
+    def parse_cmd(cmd_string):
+        # Parse command format: transactionID,command,arguments
+        # Note: Angle brackets are removed by socket_read_string prefix/suffix
+        # Returns [transaction_id, command, arguments] or [-1, "", ""] on error
+
+        textmsg(cmd_string)
+        # Find first comma
+        first_comma = str_find(cmd_string, ",")
+        if first_comma == -1:
+            return ["-1", "", ""]
+        end
+
+        # Extract transaction ID
+        trID = str_sub(cmd_string, 0, first_comma)
+
+        # Find second comma
+        remainder = str_sub(cmd_string, first_comma + 1, str_len(cmd_string))
+        second_comma = str_find(remainder, ",")
+
+        command = ""
+        arguments = ""
+
+        if second_comma == -1:
+            # No arguments
+            command = remainder
+            arguments = ""
+        else:
+            command = str_sub(remainder, 0, second_comma)
+            arguments = str_sub(remainder, second_comma + 1, str_len(remainder))
+        end
+
+        return [trID, command, arguments]
+    end
+
+    def ack_suc(trID):
+        result = ack(trID, con.ack_success, "")
+        return result
+    end
+
+    def ack(trID, ack_code, verbiage):
+        local msg = str_cat("<", str_cat(trID, str_cat(",ack,", ack_code)))
+        if str_len(verbiage) > 0:
+            msg = str_cat(msg, str_cat(",", verbiage))
+        end
+        msg = str_cat(msg, ">")
+        textmsg(msg)
+        if send_message(con.command_socket_name, msg): 
+            textmsg("ACK Failed, ", trID)
+            return True
+        end
+        return False
+    end
+
+    def res_suc(trID):
+        return res(trID, con.res_suc, "")
+    end
+
+    def res_verb(trID, verb):
+        return res(trID, con.res_suc, verb)
+    end
+
+    def res(trID, res_code, verb):
+        local msg = str_cat("<", str_cat(trID, str_cat(",res,", res_code)))
+        if str_len(verb) > 0:
+            msg = str_cat(msg, str_cat(",", verb))
+        end
+        msg = str_cat(msg, ">")
+        textmsg(msg)
+        if send_message(con.command_socket_name, msg): 
+            textmsg("RES Failed, ", trID)
+            return True
+        end
+        return False
+    end
+
+    def evt_unsol(evt_code, verb):
+        return evt("-1", evt_code, verb)
+    end
+
+    def evt(trID, evt_code, verb):
+        msg = str_cat("<", str_cat(trID, str_cat(",evt,", str_cat(evt_code, str_cat(",", str_cat(verb, ">"))))))
+        textmsg(msg)
+        if send_message(con.command_socket_name, msg): 
+            textmsg("EVT Failed, ", trID)
+            return True
+        end
+        return False
+    end
+
+    def joint_array_to_string(joint_array):
+        local result = "["
+        local i = 0
+        while i < 6:
+            result = str_cat(result, joint_array[i])
+            if i < 5:
+                result = str_cat(result, ",")
+            end
+            i = i + 1
+        end
+        result = str_cat(result, "]")
+        return result
+    end
+
+    def isRobotSteady():
+        cVel = get_actual_tcp_speed()
+        return cVel[0] < con.steadyThreshold and cVel[1] < con.steadyThreshold and cVel[2] < con.steadyThreshold and cVel[3] < con.steadyThreshold and cVel[4] < con.steadyThreshold and cVel[5] < con.steadyThreshold
+    end
+
+    def initialize_buffer_with_current_position():
+        # Fill entire buffer with current joint position to prevent sudden jumps
+        # This ensures buffer always contains valid, safe positions
+        current_joints = get_actual_joint_positions()
+
+        textmsg("Initializing buffer with current joint position")
+
+        # Fill all poses in buffer with current position
+        pose_idx = 0
+        while pose_idx < con.buffer_size:
+            buffer_offset = pose_idx * 6
+
+            # Copy current joints into this pose slot
+            ring_buffer.data[buffer_offset + 0] = current_joints[0]
+            ring_buffer.data[buffer_offset + 1] = current_joints[1]
+            ring_buffer.data[buffer_offset + 2] = current_joints[2]
+            ring_buffer.data[buffer_offset + 3] = current_joints[3]
+            ring_buffer.data[buffer_offset + 4] = current_joints[4]
+            ring_buffer.data[buffer_offset + 5] = current_joints[5]
+
+            pose_idx = pose_idx + 1
+        end
+
+        # Reset ring buffer to full state (all positions are valid)
+        ring_buffer.head = 0
+        ring_buffer.tail = 0
+        # Buffer is full of current position
+        ring_buffer.count = con.buffer_size
+        ring_buffer.isPrimed = False
+        ring_buffer.trID = "-1"
+
+        textmsg("Buffer initialized with all positions set to current pose")
+    end
+
+
+    # ===================================================================
+    # COMMAND HANDLERS
+    # ===================================================================
+
+    def init_cmd(trID):
+        if evt(trID, 1000, "Initializing robot system"):
+            return True
+        end
+
+        # Initialize robot state
+        streaming_active = False
+
+        # Fill buffer with current position and reset indices
+        enter_critical
+        initialize_buffer_with_current_position()
+        exit_critical
+
+        return res_suc(trID)
+    end
+
+    def home_cmd(trID):
+        if evt(trID, 1001, "Moving to home position"):
+            return True
+        end
+
+        # Move to home position using movej
+        if motionEnabled:
+            movej(con.home_position, a=con.max_joint_acceleration, v=con.max_joint_velocity)
+        end
+
+        return res_suc(trID)
+    end
+
+    def ver_cmd(trID):
+        if evt(trID, 1002, str_cat("Version: ", script_version)):
+            return True
+        end
+
+        return res_suc(trID)
+    end
+
+    def status_cmd(trID):
+        status = "READY"
+        if streaming_active:
+            status = "STREAMING"
+        end
+
+        # Read buffer count in critical section
+        enter_critical
+        buf_count = ring_buffer.count
+        exit_critical
+
+        status_msg = str_cat("Status: ", str_cat(status, str_cat(", BufferCount: ", buf_count)))
+        if evt(trID, 1003, status_msg):
+            return True
+        end
+        return res_suc(trID)
+    end
+
+    def currentpose_cmd(trID):
+        local current_pose = get_actual_tcp_pose()
+        local pose_str = joint_array_to_string(current_pose)
+        if evt(trID, 1004, str_cat("CurrentPose: ", pose_str)):
+            return True
+        end
+        return res_suc(trID)
+    end
+
+    def currentposture_cmd(trID):
+        local current_joints = get_actual_joint_positions()
+        local joints_str = joint_array_to_string(current_joints)
+        if evt(trID, 1005, str_cat("CurrentPosture: ", joints_str)):
+            return True
+        end
+        return res_suc(trID)
+    end
+
+    def start_streaming_cmd(trID):
+        if evt(trID, 1006, "Starting streaming mode"):
+            return True
+        end
+
+        enter_critical
+        ring_buffer.tail = 0
+        ring_buffer.head = 0
+        ring_buffer.count = 0
+        ring_buffer.isPrimed = False
+        ring_buffer.trID = trID
+        exit_critical
+
+        streaming_active = True
+        return False
+    end
+
+    def stop_streaming_sub():
+        streaming_active = False
+
+        # Clear buffer
+        enter_critical
+        ring_buffer.tail = 0
+        ring_buffer.head = 0
+        ring_buffer.count = 0
+        ring_buffer.isPrimed = False
+        ring_buffer.trID = "-1"
+        exit_critical
+    end
+
+    def stop_streaming_cmd(trID):
+        if evt(trID, 1007, "Stopping streaming mode"):
+            return True
+        end
+
+        stop_streaming_sub()
+
+        return res_suc(trID)
+    end
+
+
+    def process_cmd(trID, command, arguments):
+        # Process command and check send status for each operation
+
+        if command == "initRobot":
+            if ack_suc(trID):
+                return True
+            end
+            return init_cmd(trID)
+        elif command == "home":
+            if ack_suc(trID):
+                return True
+            end
+            return home_cmd(trID)
+        elif command == "ver":
+            if ack_suc(trID):
+                return True
+            end
+            return ver_cmd(trID)
+        elif command == "status":
+            if ack_suc(trID):
+                return True
+            end
+            return status_cmd(trID)
+        elif command == "currentpose":
+            if ack_suc(trID):
+                return True
+            end
+            return currentpose_cmd(trID)
+        elif command == "currentposture":
+            if ack_suc(trID):
+                return True
+            end
+            return currentposture_cmd(trID)
+        elif command == "startstreaming":
+            if ack_suc(trID):
+                return True
+            end
+            return start_streaming_cmd(trID)
+        elif command == "stopstreaming":
+            if ack_suc(trID):
+                return True
+            end
+            return stop_streaming_cmd(trID)
+        else:
+            if ack(trID, con.ack_cmd_not_found, command):
+                return True
+            end
+            return res(trID, con.res_error, "")
+        end
+    end
+
+    # ===================================================================
+    # THREAD 1: COMMAND AND CONTROL RUN LOOP
+    # ===================================================================
+
+    thread command_control_thread():
+        textmsg("Command Control Thread: Starting")
+
+        # Connection retry loop - keep trying until shutdown or connected
+        while not shutdown_requested:
+            textmsg("Command Control Thread: Attempting to connect...")
+
+            if socket_open(con.host_ip, con.command_port, con.command_socket_name):
+                textmsg("Command Control Thread: Connected to host")
+                if evt_unsol("1000", "Connected to Command Control Socket"):
+                    textmsg("Connection Command Welcome Message had error")
+                end 
+                break
+            else:
+                textmsg("Command Control Thread: Failed to connect, retrying...")
+                sleep(con.reconnect_delay)
+            end
+        end
+
+        # Exit if shutdown requested during connection attempts
+        if shutdown_requested:
+            textmsg("Command Control Thread: Shutdown requested during connection")
+            return None
+        end
+
+        # Send unsolicited event (not tied to any user command)
+        if evt_unsol("1100", "Command socket connected"):
+            textmsg("Failed to send connection event")
+        end
+
+        # Main command processing loop
+        while not shutdown_requested:
+            # Check for incoming commands
+            # Use prefix/suffix to automatically extract content between < >
+            local cmd_data = socket_read_string(con.command_socket_name, prefix="<", suffix=">", timeout=0)
+
+            if str_len(cmd_data) > 0:
+                # Parse command
+                local parsed = parse_cmd(cmd_data)
+                local trID = parsed[0]
+                local command = parsed[1]
+                local arguments = parsed[2]
+
+                if trID == "-1":
+                    # Parse error - echo back entire command string
+                    ack(0, con.ack_parse_error, cmd_data)
+                else:
+                    # Process command
+                    process_cmd(trID, command, arguments)
+                end
+            else:
+                sync()
+            end
+        end
+
+        # Cleanup
+        socket_close(con.command_socket_name)
+        textmsg("Command Control Thread: Shutdown complete")
+    end
+
+    # ===================================================================
+    # STREAMING BUFFER MANAGEMENT
+    # ===================================================================
+
+    def handle_buffer_refill():
+        # Check buffer level in critical section
+        enter_critical
+        local current_count = ring_buffer.count
+        exit_critical
+
+        # Request more data if buffer is low
+        if current_count < con.buffer_refill_threshold:
+            if send_message(con.streaming_socket_name, "<more>"):
+                textmsg("Failed to send buffer refill request")
+                return None
+            end
+
+            # Read 30 floats from socket (5 poses x 6 joints per pose)
+            # Format expected from host: "( q1, q2, q3, ..., q30 )"
+            local float_data = socket_read_ascii_float(30, con.streaming_socket_name, con.socket_timeout)
+
+            # Check if read was successful
+            # float_data[0] contains the count of successfully read floats
+            local num_floats = float_data[0]
+
+            # Calculate number of complete poses received (must be multiple of 6)
+            local num_complete_poses = 0
+            if num_floats > 0:
+                num_complete_poses = num_floats / 6
+            end
+
+            # Check if we have complete poses (num_floats must be exact multiple of 6)
+            if num_floats > 0 and (num_complete_poses * 6) == num_floats:
+                # Successfully read complete poses (could be 1-5 poses)
+                # Write all poses to buffer in single critical section
+                enter_critical
+
+                # Extract and buffer N complete poses using ring buffer logic
+                # DO NOT overwrite unconsumed data - check for space first
+                local pose_idx = 0
+                while pose_idx < num_complete_poses:
+                    # Check if buffer has space for this pose
+                    if ring_buffer.count >= con.buffer_size:
+                        textmsg("Buffer full, cannot write more poses")
+                        # Exit loop - don't overwrite unconsumed data
+                        pose_idx = con.poses_per_fill
+                    else:
+                        # Extract 6 joints for this pose from socket data
+                        local socket_base_idx = pose_idx * 6 + 1  # +1 because float_data[0] is count
+
+                        # Calculate buffer offset for this pose at head position
+                        local buffer_offset = ring_buffer.head * 6
+
+                        # Write 6 joints to flat buffer using index arithmetic
+                        ring_buffer.data[buffer_offset + 0] = float_data[socket_base_idx + 0]
+                        ring_buffer.data[buffer_offset + 1] = float_data[socket_base_idx + 1]
+                        ring_buffer.data[buffer_offset + 2] = float_data[socket_base_idx + 2]
+                        ring_buffer.data[buffer_offset + 3] = float_data[socket_base_idx + 3]
+                        ring_buffer.data[buffer_offset + 4] = float_data[socket_base_idx + 4]
+                        ring_buffer.data[buffer_offset + 5] = float_data[socket_base_idx + 5]
+
+                        # Advance head (write position) circularly
+                        ring_buffer.head = (ring_buffer.head + 1) % con.buffer_size
+
+                        # Increment count (we already checked buffer isn't full)
+                        ring_buffer.count = ring_buffer.count + 1
+
+                        pose_idx = pose_idx + 1
+                    end
+                end
+                ring_buffer.isPrimed = True
+                exit_critical
+            elif num_floats == 0:
+                # Read failed or timeout
+                textmsg("Streaming Handler: Failed to read floats from socket")
+            else:
+                # Incomplete pose data (not a multiple of 6)
+                textmsg(str_cat("Streaming Handler: Incomplete pose - received ", str_cat(num_floats, " floats (not multiple of 6)")))
+            end
+        end
+    end
+
+    # ===================================================================
+    # THREAD 2: STREAMING HANDLER RUN LOOP
+    # ===================================================================
+
+    thread streaming_handler_thread():
+        textmsg("Streaming Handler Thread: Starting")
+
+
+        # Connection retry loop - keep trying until shutdown or connected
+        while not shutdown_requested:
+            textmsg("Streaming Handler Thread: Attempting to connect...")
+
+            if socket_open(con.host_ip, con.streaming_port, con.streaming_socket_name):
+                textmsg("Streaming Handler Thread: Connected to host")
+                if evt_unsol("1000", "Connected to Stream Socket"):
+                    textmsg("Connection Stream Welcome Message had error")
+                end 
+                break
+            else:
+                textmsg("Streaming Handler Thread: Failed to connect, retrying...")
+                sleep(con.reconnect_delay)
+            end
+        end
+
+        # Exit if shutdown requested during connection attempts
+        if shutdown_requested:
+            textmsg("Streaming Handler Thread: Shutdown requested during connection")
+            return None
+        end
+
+
+        # Main streaming handler loop
+        while not shutdown_requested:
+            if streaming_active:
+                handle_buffer_refill()
+            end
+            sync()
+        end
+
+        # Cleanup
+        socket_close(con.streaming_socket_name)
+        textmsg("Streaming Handler Thread: Shutdown complete")
+    end
+
+    # ===================================================================
+    # THREAD 3: MOTION EXECUTION RUN LOOP
+    # ===================================================================
+
+    thread motion_execution_thread():
+        textmsg("Motion Execution Thread: Starting")
+
+        # Initialize target_joints to current position
+        # This persists across loop iterations for smooth settling
+        local target_joints = get_actual_joint_positions()
+
+        while not shutdown_requested:
+
+            if streaming_active:
+                # Read next pose from buffer in critical section
+                local has_data = False
+
+                enter_critical
+                isPrimed = ring_buffer.isPrimed
+                trID = ring_buffer.trID
+                exit_critical
+                if not isPrimed and streaming_active:
+                    sync()
+                    continue
+                end
+
+
+                enter_critical
+                if ring_buffer.count > 0:
+                    # Extract 6 joints from flat buffer at tail position
+                    local buffer_offset = ring_buffer.tail * 6
+                    target_joints[0] = ring_buffer.data[buffer_offset + 0]
+                    target_joints[1] = ring_buffer.data[buffer_offset + 1]
+                    target_joints[2] = ring_buffer.data[buffer_offset + 2]
+                    target_joints[3] = ring_buffer.data[buffer_offset + 3]
+                    target_joints[4] = ring_buffer.data[buffer_offset + 4]
+                    target_joints[5] = ring_buffer.data[buffer_offset + 5]
+
+                    # Advance tail and decrement count
+                    ring_buffer.tail = (ring_buffer.tail + 1) % con.buffer_size
+                    ring_buffer.count = ring_buffer.count - 1
+                    has_data = True
+                end
+                exit_critical
+
+                if motionEnabled and has_data:
+                    # Execute motion using servoj
+                    servoj(target_joints, t=con.servoj_time, lookahead_time=con.servoj_lookahead, gain=con.servoj_gain)
+                elif motionEnabled and not isRobotSteady():
+                    # Holding position when buffer runs out
+                    servoj(target_joints, t=con.servoj_time, lookahead_time=con.servoj_lookahead, gain=con.servoj_gain)
+                elif isPrimed and not has_data:
+                    stop_streaming_sub()
+                    res_suc(trID)
+                else:
+                    sync()
+                end
+            else:
+                sync()
+            end
+        end
+    end
+
+
+    # ===================================================================
+    # MAIN PROGRAM
+    # ===================================================================
+
+    def main():
+
+        # Fill motion buffer with current joint position
+        # This ensures buffer starts with valid, safe positions
+        # initialize_buffer_with_current_position()
+
+        # Start all three threads
+        cmd_thread = run command_control_thread()
+        stream_thread = run streaming_handler_thread()
+        motion_thread = run motion_execution_thread()
+
+        textmsg("All threads started successfully")
+
+        # Main thread monitors for shutdown conditions
+        # In practice, you would implement shutdown logic here
+        # For example, monitoring a specific command or condition
+
+        # Keep main thread alive
+        while not shutdown_requested:
+            sync()
+        end
+
+        shutdown_requested = True
+        # Wait for threads to complete
+        textmsg("Waiting for threads to shutdown...")
+        join cmd_thread
+        join stream_thread
+        join motion_thread
+
+        textmsg("URScript Command and Control System: Shutdown complete")
+    end
+
+    textmsg("--- Successful Parse --- ", script_version)
+    main()
+    textmsg("--- Successful Shutdown --- ", script_version)
+end
+
+body()
