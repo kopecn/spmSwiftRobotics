@@ -14,6 +14,10 @@ let package = Package(
             name: "SwiftRobotics",
             targets: ["SwiftRobotics"]
         ),
+        .library(
+            name: "SwiftRoboticsSockets",
+            targets: ["SwiftRoboticsSockets"]
+        ),
     ],
     dependencies: [
         .package(url: "git@github.com:kopecn/spmFoundationTools.git", branch: "dev"),
