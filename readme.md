@@ -5,10 +5,16 @@
 ```mermaid
 flowchart TD
     SwiftRoboticAssets
-    SwiftRoboticVisualizer([SwiftRoboticVisualizer])-->DefaultBackend[[DefaultBackend]]
-    SwiftRoboticVisualizer([SwiftRoboticVisualizer])-->SwiftCrossUI[[SwiftCrossUI]]
-    SwiftRoboticVisualizer([SwiftRoboticVisualizer])-->SwiftRobotics
+    SwiftRobotics-->FoundationCommon[[FoundationCommon]]
+    SwiftRobotics-->FoundationTools[[FoundationTools]]
+    SwiftRobotics-->FoundationTypes[[FoundationTypes]]
     SwiftRobotics-->kvSIMD[[kvSIMD]]
+    SwiftRoboticsSockets-->Logging[[Logging]]
+    SwiftRoboticsSockets-->NIOHandler[[NIOHandler]]
+    SwiftRoboticsSockets-->OpenCombine[[OpenCombine]]
+    SwiftRoboticsSockets-->OpenCombineDispatch[[OpenCombineDispatch]]
+    SwiftRoboticsSockets-->SwiftRoboticAssets
+    SwiftRoboticsSockets-->SwiftRobotics
     SwiftRoboticsTests{{SwiftRoboticsTests}}-->SwiftRobotics
 ```
 

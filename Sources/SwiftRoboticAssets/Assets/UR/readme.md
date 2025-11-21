@@ -22,17 +22,17 @@ All threads monitor for shutdown conditions and use `sync()` to conserve computa
 Manages discrete command execution using a transaction-based protocol over a reverse socket connection to the host controller.
 
 ### Socket Configuration
-- **Host IP**: Defined by `HOST_IP` constant (default: 192.168.1.100)
-- **Port**: Defined by `COMMAND_PORT` constant (default: 50001)
-- **Socket Name**: Defined by `COMMAND_SOCKET_NAME` constant (default: "socket_cmd")
+- **Host IP**: Defined by `con.host_ip` (default: "192.168.3.2")
+- **Port**: Defined by `con.command_port` (default: 50001)
+- **Socket Name**: Defined by `con.command_socket_name` (default: "socket_cmd")
 - **Connection Type**: Reverse socket (robot initiates connection to host)
-- **Reconnect Logic**: Automatic retry with configurable delay (default: 2 seconds)
+- **Reconnect Logic**: Automatic retry with configurable delay (default: 1.0 seconds)
 
 ### Connection Behavior
 
 The command control thread implements automatic reconnection:
 1. On startup, attempts to connect to host
-2. If connection fails, waits `RECONNECT_DELAY` seconds and retries
+2. If connection fails, waits `con.reconnect_delay` seconds and retries
 3. Continues retrying until either:
    - Connection succeeds, OR
    - `shutdown_requested` flag is set to True
@@ -158,17 +158,17 @@ Events that are not related to a specific user command (unsolicited transactions
 Manages a real-time motion buffer by monitoring buffer levels and requesting data refills from the host when needed.
 
 ### Socket Configuration
-- **Host IP**: Defined by `HOST_IP` constant (default: 192.168.1.100)
-- **Port**: Defined by `STREAMING_PORT` constant (default: 50002)
-- **Socket Name**: Defined by `STREAMING_SOCKET_NAME` constant (default: "socket_stream")
+- **Host IP**: Defined by `con.host_ip` (default: "192.168.3.2")
+- **Port**: Defined by `con.streaming_port` (default: 50002)
+- **Socket Name**: Defined by `con.streaming_socket_name` (default: "socket_stream")
 - **Connection Type**: Reverse socket (robot initiates connection to host)
-- **Reconnect Logic**: Automatic retry with configurable delay (default: 2 seconds)
+- **Reconnect Logic**: Automatic retry with configurable delay (default: 1.0 seconds)
 
 ### Connection Behavior
 
 The streaming handler thread implements automatic reconnection:
 1. On startup, attempts to connect to host
-2. If connection fails, waits `RECONNECT_DELAY` seconds and retries
+2. If connection fails, waits `con.reconnect_delay` seconds and retries
 3. Continues retrying until either:
    - Connection succeeds, OR
    - `shutdown_requested` flag is set to True
@@ -187,7 +187,7 @@ The streaming handler thread implements automatic reconnection:
 #### Buffer Refill Protocol
 
 1. Thread polls buffer level at sync frequency
-2. When `count < BUFFER_REFILL_THRESHOLD`:
+2. When `count < con.buffer_refill_threshold`:
    - Send refill request: `<more>`
 3. Host responds with 30 floats (5 complete poses)
 4. Robot reads using `socket_read_ascii_float(30, socket_name, timeout)`
@@ -201,25 +201,29 @@ The streaming handler thread implements automatic reconnection:
 **Storage Format:**
 ```urscript
 # Ring buffer implemented as struct with all state encapsulated
-global buffer = struct(
-    data = make_list(BUFFER_SIZE * 6, 0.0, BUFFER_SIZE * 6),  # Flat list of joint positions
-    head = 0,  # Write position
-    tail = 0,  # Read position
-    count = 0  # Number of valid poses
+global ring_buffer = struct(
+    data = make_list(con.buffer_size * 6, 0.0, con.buffer_size * 6),  # Flat list of joint positions
+    head = 0,       # Write position
+    tail = 0,       # Read position
+    count = 0,      # Number of valid poses
+    isPrimed = False,  # Flag indicating if buffer has received initial data from host
+    trID = "-1"     # Transaction ID for the streaming session
 )
 # Total elements in data: 250 poses × 6 joints = 1500 floats
-# Access pattern: buffer.data[pose_index * 6 + joint_index]
+# Access pattern: ring_buffer.data[pose_index * 6 + joint_index]
 ```
 
 **Ring Buffer Components:**
 
 | Component | Struct Member | Description | Range |
 |-----------|---------------|-------------|-------|
-| **buffer (data)** | `buffer.data` | Fixed-size flat list storing joint positions | 1500 floats |
-| **head (write_index)** | `buffer.head` | Index where next element will be written | 0 to 249 |
-| **tail (read_index)** | `buffer.tail` | Index where next element will be read | 0 to 249 |
-| **capacity (N)** | `BUFFER_SIZE` | Total number of poses the buffer can hold (constant) | 250 poses |
-| **count** | `buffer.count` | Number of valid (filled) entries | 0 to 250 |
+| **buffer (data)** | `ring_buffer.data` | Fixed-size flat list storing joint positions | 1500 floats |
+| **head (write_index)** | `ring_buffer.head` | Index where next element will be written | 0 to 249 |
+| **tail (read_index)** | `ring_buffer.tail` | Index where next element will be read | 0 to 249 |
+| **capacity (N)** | `con.buffer_size` | Total number of poses the buffer can hold (constant) | 250 poses |
+| **count** | `ring_buffer.count` | Number of valid (filled) entries | 0 to 250 |
+| **isPrimed** | `ring_buffer.isPrimed` | Flag indicating if buffer has received data from host | True/False |
+| **trID** | `ring_buffer.trID` | Transaction ID of the streaming session for response tracking | String |
 
 **Index Arithmetic:**
 - To access pose P, joint J: `buffer.data[P * 6 + J]`
@@ -229,11 +233,11 @@ global buffer = struct(
 **Ring Buffer Operation (True Circular Buffer Semantics):**
 - **Writes always succeed**: New data is always accepted, even when buffer is full
 - **Overwrite behavior**: When buffer is full and writing, oldest data is discarded (tail advances)
-- Write position advances circularly: `buffer.head = (buffer.head + 1) % BUFFER_SIZE`
-- Read position advances circularly: `buffer.tail = (buffer.tail + 1) % BUFFER_SIZE`
+- Write position advances circularly: `ring_buffer.head = (ring_buffer.head + 1) % con.buffer_size`
+- Read position advances circularly: `ring_buffer.tail = (ring_buffer.tail + 1) % con.buffer_size`
 - Buffer wraps around: when index reaches 249, next index is 0
-- **Full buffer writes**: If `buffer.count == BUFFER_SIZE`, tail advances to discard oldest pose
-- `buffer.count` tracks occupancy: increments only if `buffer.count < BUFFER_SIZE`, never exceeds capacity
+- **Full buffer writes**: If `ring_buffer.count == con.buffer_size`, tail advances to discard oldest pose
+- `ring_buffer.count` tracks occupancy: increments only if `ring_buffer.count < con.buffer_size`, never exceeds capacity
 - **Read protection**: Only reads when `buffer.count > 0` to prevent reading invalid data
 
 **Why Use a Struct?**
@@ -332,22 +336,50 @@ Dequeues target joint positions from the motion buffer and executes them using `
 
 #### When Streaming Active
 
-1. Check buffer for available data (protected by semaphore)
-2. If data available:
-   - Dequeue next target joint position
-   - Update read index and count
-   - Execute `servoj()` with target
-3. If buffer empty:
-   - Hold current position using `servoj()` with current joint angles
+The motion execution thread implements a state machine with priming logic:
+
+1. **Check if buffer is primed**:
+   - If `isPrimed == False` and streaming is active:
+     - Skip execution and `sync()` (wait for initial data from host)
+     - Continue to next iteration
+
+2. **If buffer is primed and has data**:
+   - Read next pose from buffer (protected by critical section)
+   - Execute `servoj()` with target joint positions
+   - Advance tail and decrement count
+
+3. **If buffer is primed but empty (no data available)**:
+   - Check if robot is steady using `isRobotSteady()`:
+     - If NOT steady: Hold current position using `servoj()`
+     - If steady: Stop streaming and send RES success with stored transaction ID
+
+4. **If motion disabled**:
+   - Skip `servoj()` execution but continue buffer management
 
 #### When Streaming Inactive
 
 - Thread sleeps using `sync()` to conserve resources
 
+### Robot Steady Detection
+
+```urscript
+def isRobotSteady():
+    cVel = get_actual_tcp_speed()
+    return cVel[0] < con.steadyThreshold and
+           cVel[1] < con.steadyThreshold and
+           cVel[2] < con.steadyThreshold and
+           cVel[3] < con.steadyThreshold and
+           cVel[4] < con.steadyThreshold and
+           cVel[5] < con.steadyThreshold
+end
+```
+
+**Purpose**: Determines if robot has come to a complete stop after buffer depletion, allowing for graceful streaming completion.
+
 ### Motion Commands
 
 ```urscript
-servoj(target_joints, t=SERVOJ_TIME, lookahead_time=SERVOJ_LOOKAHEAD, gain=SERVOJ_GAIN)
+servoj(target_joints, t=con.servoj_time, lookahead_time=con.servoj_lookahead, gain=con.servoj_gain)
 ```
 
 **Parameters:**
@@ -370,61 +402,38 @@ On shutdown request:
 
 ## Configuration Constants
 
-All system constants are defined at the top of the script for easy configuration.
+All system constants are defined in a single `con` struct at the top of the script for easy configuration.
 
-### Network Configuration
-
-```urscript
-HOST_IP = "192.168.1.100"        # Host controller IP address
-COMMAND_PORT = 50001             # Command and control port
-STREAMING_PORT = 50002           # Streaming data port
-COMMAND_SOCKET_NAME = "socket_cmd"    # Named socket for command/control
-STREAMING_SOCKET_NAME = "socket_stream"  # Named socket for streaming
-```
-
-### Transaction Configuration
+### Configuration Struct
 
 ```urscript
-MIN_TRANSACTION_ID = 1           # Minimum transaction ID
-MAX_TRANSACTION_ID = 899         # Maximum transaction ID (wraps to 1)
+global con = struct(
+    host_ip = "192.168.3.2",              # Host controller IP address
+    command_port = 50001,                  # Command and control port
+    streaming_port = 50002,                # Streaming data port
+    command_socket_name = "socket_cmd",    # Named socket for command/control
+    streaming_socket_name = "socket_stream", # Named socket for streaming
+    buffer_size = 250,                     # 0.5 seconds at 500Hz
+    buffer_refill_threshold = 25,          # Request refill below this level (50ms)
+    poses_per_fill = 5,                    # Number of poses per socket read (30 floats / 6 joints)
+    home_position = [0.0, -1.04719, -2.09441, -1.57082, -1.57082, -1.57082], # Home joint positions (radians)
+    max_joint_velocity = 1.05,             # Maximum joint velocity (rad/s)
+    max_joint_acceleration = 1.4,          # Maximum joint acceleration (rad/s²)
+    servoj_time = 0.002,                   # 2ms - time where command controls the robot (blocking time)
+    servoj_lookahead = 0.1,                # 0.1s - trajectory smoothing lookahead time, range [0.03, 0.2]
+    servoj_gain = 300,                     # Proportional gain for position following, range [100, 2000]
+    socket_timeout = 2.0,                  # Socket timeout (seconds)
+    reconnect_delay = 1.0,                 # Delay between reconnection attempts (seconds)
+    ack_success = 0,                       # ACK code: success
+    ack_parse_error = 1,                   # ACK code: parse error
+    ack_cmd_not_found = 2,                 # ACK code: command not found
+    res_suc = 0,                           # RES code: success
+    res_error = 1,                         # RES code: error
+    steadyThreshold = 0.0025               # Velocity threshold for determining if robot is steady (rad/s)
+)
 ```
 
-### Buffer Configuration
-
-```urscript
-BUFFER_SIZE = 250                # 0.5 seconds at 500Hz
-BUFFER_REFILL_THRESHOLD = 25     # Request refill below this level (50ms)
-POSES_PER_FILL = 5               # Number of poses per socket read (30 floats / 6 joints)
-```
-
-### Robot Configuration
-
-```urscript
-HOME_POSITION = [0.0, -1.57, 1.57, -1.57, -1.57, 0.0]  # Home joint positions (radians)
-MAX_JOINT_VELOCITY = 1.05        # Maximum joint velocity (rad/s)
-MAX_JOINT_ACCELERATION = 1.4     # Maximum joint acceleration (rad/s²)
-SERVOJ_TIME = 0.002              # 2ms - time where command controls the robot (blocking time)
-SERVOJ_LOOKAHEAD = 0.1           # 0.1s - trajectory smoothing lookahead time, range [0.03, 0.2]
-SERVOJ_GAIN = 300                # Proportional gain for position following, range [100, 2000]
-```
-
-### Thread Synchronization
-
-```urscript
-SOCKET_TIMEOUT = 2.0             # Socket timeout (seconds)
-RECONNECT_DELAY = 2.0            # Delay between reconnection attempts (seconds)
-```
-
-### Response Codes
-
-```urscript
-ACK_SUCCESS = 0
-ACK_PARSE_ERROR = 1
-ACK_COMMAND_NOT_FOUND = 2
-RES_SUCCESS = 0
-RES_ERROR = 1
-UNSOLICITED_TRANSACTION_ID = -1  # For events not tied to a user command
-```
+**Note**: The unsolicited transaction ID (`-1`) for events not tied to a user command is hardcoded in the implementation.
 
 ---
 
@@ -596,18 +605,18 @@ def initialize_buffer_with_current_position():
 
     # Fill all 250 pose slots with current position
     local pose_idx = 0
-    while pose_idx < BUFFER_SIZE:
+    while pose_idx < con.buffer_size:
         local buffer_offset = pose_idx * 6
         # Write 6 joints to each pose slot
-        buffer.data[buffer_offset + 0] = current_joints[0]
+        ring_buffer.data[buffer_offset + 0] = current_joints[0]
         # ... (for all 6 joints)
         pose_idx = pose_idx + 1
     end
 
     # Reset ring buffer indices with buffer full
-    buffer.head = 0
-    buffer.tail = 0
-    buffer.count = BUFFER_SIZE  # Buffer is full
+    ring_buffer.head = 0
+    ring_buffer.tail = 0
+    ring_buffer.count = con.buffer_size  # Buffer is full
 end
 ```
 
