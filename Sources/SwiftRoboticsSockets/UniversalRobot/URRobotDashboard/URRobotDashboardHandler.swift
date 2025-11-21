@@ -6,38 +6,57 @@ import OpenCombine
 import OpenCombineDispatch
 import SocketCommon
 
+/// Handles Universal Robot dashboard client socket connections and message handling.
+/// 
+/// - Provides observable connection state for UI integration.
+/// - Manages client lifecycle: connect, disconnect, error handling.
+/// - Integrates with NIOSocketHandlerClient and URRobotDashboardMessageHandling.
 public class URRobotDashboardHandler: OpenCombine.ObservableObject {
 
     // MARK: - OpenCombine Compatibility for SwiftUI/SwiftCrossUI
 
+    /// Publisher for object change notifications, compatible with OpenCombine.
     public let objectWillChange = ObservableObjectPublisher()
 
+    /// Current connection state of the dashboard client socket.
     @OpenCombine.Published public var connectionState: SocketClientConnectionState = .disconnected {
         didSet {
             objectWillChange.send()
         }
     }
 
+    /// Last response received from the dashboard server.
     @OpenCombine.Published public var lastDashResponse: String = "" {
         didSet {
             objectWillChange.send()
         }
     }
 
+    /// IP address used for the dashboard client socket. Defaults to "localhost".
     public var ipAddress: String = "localhost"
+
+    /// Port used for the dashboard client socket. Defaults to 29999.
     private var port: Int = 29999
 
+    /// Cancellable for connection state publisher subscription.
     private var connectionStateCancellable: AnyCancellable?
 
+    /// Handler for incoming dashboard messages.
     var dashboardMessageHandler: URRobotDashboardMessageHandling?
+
+    /// The client socket instance handling dashboard communication.
     var dashboardClientSocket: NIOSocketHandlerClient?
 
+    /// Last dashboard command sent.
     var lastDashCommandSent: String = "None"
 
+    /// Initializes the dashboard handler.
     public init() {
         logger.info("🟢 UR Robot Class Handler Initialized ")
     }
 
+    /// Toggles the connection state of the dashboard client socket.
+    /// - Connects if not connected, disconnects if active.
     public func toggleConnection() {
         guard let dashboardClientSocket = dashboardClientSocket else {
             logger.info("🟢 Connecting")
@@ -61,6 +80,10 @@ public class URRobotDashboardHandler: OpenCombine.ObservableObject {
         }
     }
 
+    /// Connects to the dashboard server.
+    /// - Parameters:
+    ///   - ipAddress: Optional IP address to override the default.
+    ///   - port: Optional port to override the default.
     private func connect(
         ipAddress: String? = nil,
         port: Int? = nil
@@ -97,6 +120,8 @@ public class URRobotDashboardHandler: OpenCombine.ObservableObject {
         )
     }
 
+    /// Tears down the client socket and cancels subscriptions.
+    /// - Throws: Any error encountered during shutdown.
     private func teardown() throws {
         connectionStateCancellable?.cancel()
         try dashboardClientSocket?.shutdown()
@@ -106,6 +131,7 @@ public class URRobotDashboardHandler: OpenCombine.ObservableObject {
         dashboardMessageHandler = nil
     }
 
+    /// Disconnects the dashboard client socket and updates state.
     private func disconnect() {
         guard dashboardClientSocket?.isConnected ?? false else { return }
 
@@ -123,13 +149,16 @@ public class URRobotDashboardHandler: OpenCombine.ObservableObject {
         }
     }
 
+    /// Clears any connection errors and resets state.
     public func clearConnectionError() {
         try? teardown()
         connectionState = .disconnected
     }
 
+    /// Handles incoming dashboard messages.
+    /// - Parameter input: The message received from the dashboard server.
     private func handleDashboardMessages(_ input: String) async {
-        print("Handled input: \(input)")
+        logger.debug("🔵 Handled dashboard input: \(input)")
     }
 }
 

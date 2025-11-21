@@ -6,27 +6,43 @@ import OpenCombine
 import OpenCombineDispatch
 import SocketCommon
 
+/// Handles Universal Robot stream server socket connections and message handling.
+///
+/// - Provides observable connection state for UI integration.
+/// - Manages server lifecycle: start, stop, error handling.
+/// - Integrates with NIOSocketHandlerServer and URRobotStreamMessageHandling.
+/// - Supports waveform streaming to the robot.
 public class URRobotStreamHandler: OpenCombine.ObservableObject {
 
     // MARK: - OpenCombine Compatibility for SwiftUI/SwiftCrossUI
 
+    /// Publisher for object change notifications, compatible with OpenCombine.
     public let objectWillChange = ObservableObjectPublisher()
 
+    /// Current connection state of the stream server socket.
     @OpenCombine.Published public var connectionState: SocketServerListeningState = .off {
         didSet {
             objectWillChange.send()
         }
     }
 
+    /// Port used for the stream server socket. Defaults to 50002.
     private var port: Int = 50002
 
+    /// Cancellable for connection state publisher subscription.
     private var connectionStateCancellable: AnyCancellable?
 
+    /// Handler for incoming stream messages.
     var streamMessageHandler: URRobotStreamMessageHandling?
+
+    /// The server socket instance handling stream communication.
     var streamServerSocket: NIOSocketHandlerServer?
 
+    /// The currently loaded waveform for streaming.
     var currentlyLoadedWaveform: WaveformStreamer?
 
+    /// Initializes the stream handler.
+    /// - Parameter connectOnLaunch: If true, starts listening immediately.
     public init(
         connectOnLaunch: Bool = false
     ) {
@@ -36,6 +52,8 @@ public class URRobotStreamHandler: OpenCombine.ObservableObject {
         }
     }
 
+    /// Toggles the connection state of the stream server socket.
+    /// - Starts listening if not connected, disconnects if active.
     public func toggleConnection() {
         guard let streamServerSocket = streamServerSocket else {
             logger.info("🟢 Starting Server")
@@ -59,6 +77,8 @@ public class URRobotStreamHandler: OpenCombine.ObservableObject {
         }
     }
 
+    /// Starts listening for stream connections.
+    /// - Parameter port: Optional port to override the default.
     private func startListening(
         port: Int? = nil
     ) {
@@ -89,6 +109,7 @@ public class URRobotStreamHandler: OpenCombine.ObservableObject {
         )
     }
 
+    /// Tears down the server socket and cancels subscriptions.
     private func teardown() {
         connectionStateCancellable?.cancel()
         streamServerSocket?.shutdown()
@@ -98,6 +119,7 @@ public class URRobotStreamHandler: OpenCombine.ObservableObject {
         streamMessageHandler = nil
     }
 
+    /// Disconnects the stream server socket and updates state.
     private func disconnect() {
 
         guard streamServerSocket?.serverConnectionStatePublisher.value ?? .off != .off else { return }
@@ -111,6 +133,7 @@ public class URRobotStreamHandler: OpenCombine.ObservableObject {
         logger.info("🟢 \(self) disconnected")
     }
 
+    /// Clears any connection errors and resets state.
     public func clearConnectionError() {
         teardown()
         connectionState = .off
@@ -120,6 +143,7 @@ public class URRobotStreamHandler: OpenCombine.ObservableObject {
 // MARK: - Logging Description
 
 extension URRobotStreamHandler: CustomStringConvertible {
+    /// String description for logging and debugging.
     public var description: String {
         "URRobotStreamHandler(connectionState: \(connectionState))"
     }
