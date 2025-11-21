@@ -62,5 +62,16 @@ let package = Package(
             dependencies: ["SwiftRobotics"],
             path: "Tests/SwiftRoboticsTests"
         ),
+        .testTarget(
+            name: "SwiftRoboticsSocketsTests",
+            dependencies: [
+                "SwiftRoboticsSockets",
+                "SwiftRoboticAssets",
+                "SwiftRobotics",
+                .product(name: "OpenCombine", package: "OpenCombine"),
+                .product(name: "OpenCombineDispatch", package: "OpenCombine"),
+            ],
+            path: "Tests/SwiftRoboticsSocketsTests"
+        ),
     ]
 )

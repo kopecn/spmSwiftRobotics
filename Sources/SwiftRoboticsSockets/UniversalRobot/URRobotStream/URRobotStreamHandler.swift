@@ -52,6 +52,20 @@ public class URRobotStreamHandler: OpenCombine.ObservableObject {
         }
     }
 
+    /// Initializes the stream handler with custom port.
+    /// - Parameters:
+    ///   - port: The port to listen on for robot stream connections. Defaults to 50002.
+    ///   - connectOnLaunch: If true, starts listening immediately.
+    /// - Note: This is a convenience initializer for testing and custom configurations.
+    ///         The default parameterless init() is preferred for reactive frontends.
+    public init(port: Int, connectOnLaunch: Bool = false) {
+        self.port = port
+        logger.info("🟢 UR Robot Class Handler Initialized with Port: \(port)")
+        if connectOnLaunch {
+            self.startListening()
+        }
+    }
+
     /// Toggles the connection state of the stream server socket.
     /// - Starts listening if not connected, disconnects if active.
     public func toggleConnection() {

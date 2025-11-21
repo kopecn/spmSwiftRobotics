@@ -55,6 +55,18 @@ public class URRobotDashboardHandler: OpenCombine.ObservableObject {
         logger.info("🟢 UR Robot Class Handler Initialized ")
     }
 
+    /// Initializes the dashboard handler with custom IP address and port.
+    /// - Parameters:
+    ///   - ipAddress: The IP address of the robot dashboard server. Defaults to "localhost".
+    ///   - port: The port of the dashboard server. Defaults to 29999.
+    /// - Note: This is a convenience initializer for testing and custom configurations.
+    ///         The default parameterless init() is preferred for reactive frontends.
+    public init(ipAddress: String, port: Int = 29999) {
+        self.ipAddress = ipAddress
+        self.port = port
+        logger.info("🟢 UR Robot Class Handler Initialized with IP: \(ipAddress), Port: \(port)")
+    }
+
     /// Toggles the connection state of the dashboard client socket.
     /// - Connects if not connected, disconnects if active.
     public func toggleConnection() {

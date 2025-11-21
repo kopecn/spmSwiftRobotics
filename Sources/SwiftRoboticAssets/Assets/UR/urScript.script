@@ -16,7 +16,7 @@ def body():
     # --- Globals ---
     global motionEnabled = True
 
-    global con = struct(host_ip = "192.168.3.2",command_port = 50001,streaming_port = 50002,command_socket_name = "socket_cmd",streaming_socket_name = "socket_stream",buffer_size = 250,buffer_refill_threshold = 25,poses_per_fill = 5,home_position = [0.0, -1.04719, -2.09441, -1.57082, -1.57082, -1.57082],max_joint_velocity = 1.05,max_joint_acceleration = 1.4,servoj_time = 0.002,servoj_lookahead = 0.1,servoj_gain = 300,socket_timeout = 2.0,reconnect_delay = 1.0,ack_success = 0,ack_parse_error = 1,ack_cmd_not_found = 2,res_suc = 0,res_error = 1,steadyThreshold = 0.0025)
+    global con = struct(host_ip = "<<HOST_CALLBACK_IPADDRESS>>",command_port = 50001,streaming_port = 50002,command_socket_name = "socket_cmd",streaming_socket_name = "socket_stream",buffer_size = 250,buffer_refill_threshold = 25,poses_per_fill = 5,home_position = [0.0, -1.04719, -2.09441, -1.57082, -1.57082, -1.57082],max_joint_velocity = 1.05,max_joint_acceleration = 1.4,servoj_time = 0.002,servoj_lookahead = 0.1,servoj_gain = 300,socket_timeout = 2.0,reconnect_delay = 1.0,ack_success = 0,ack_parse_error = 1,ack_cmd_not_found = 2,res_suc = 0,res_error = 1,steadyThreshold = 0.0025)
 
 
     # Shutdown flag

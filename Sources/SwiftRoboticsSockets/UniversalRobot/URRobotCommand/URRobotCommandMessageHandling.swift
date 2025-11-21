@@ -18,13 +18,14 @@ final class URRobotCommandMessageHandling: @unchecked Sendable, MessageHandling 
         self.delegate = delegate
     }
 
-    /// Handles an incoming message from the robot dashboard.
-    /// Updates the delegate's `lastDashResponse` property on the main actor.
+    /// Handles an incoming message from the robot command client.
+    /// Updates the delegate's `lastResponse` property on the main actor.
     /// - Parameter message: The message string received from the robot.
     func handleMessage(_ message: String) async {
         await MainActor.run {
             logger.info("🟢 Recv: \(message)")
-            // FIXME: - Add appropriate handler for transaction management.  
+            delegate?.lastResponse = message
+            // FIXME: - Add appropriate handler for transaction management.
         }
     }
 }

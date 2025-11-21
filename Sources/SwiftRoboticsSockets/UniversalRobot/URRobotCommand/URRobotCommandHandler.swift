@@ -25,6 +25,13 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
         }
     }
 
+    /// Last response received from the robot.
+    @OpenCombine.Published public var lastResponse: String = "" {
+        didSet {
+            objectWillChange.send()
+        }
+    }
+
     /// Port used for the command server socket. Defaults to 50001.
     private var port: Int = 50001
 
@@ -43,6 +50,20 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
         connectOnLaunch: Bool = false
     ) {
         logger.info("🟢 UR Robot Class Handler Initialized ")
+        if connectOnLaunch {
+            self.startListening()
+        }
+    }
+
+    /// Initializes the handler with custom port.
+    /// - Parameters:
+    ///   - port: The port to listen on for robot command connections. Defaults to 50001.
+    ///   - connectOnLaunch: If true, starts listening immediately.
+    /// - Note: This is a convenience initializer for testing and custom configurations.
+    ///         The default parameterless init() is preferred for reactive frontends.
+    public init(port: Int, connectOnLaunch: Bool = false) {
+        self.port = port
+        logger.info("🟢 UR Robot Class Handler Initialized with Port: \(port)")
         if connectOnLaunch {
             self.startListening()
         }
