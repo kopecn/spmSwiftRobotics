@@ -6,7 +6,7 @@ extension URRobotCommandHandler {
 
     /// Sends a formatted command to the robot using transaction protocol.
     /// - Parameter command: The `RobotCommand` to send.
-    private func sendCommand(_ command: RobotCommand) {
+    public func sendCommand(_ command: RobotCommand) {
         // TODO: Implement proper transaction ID management (increment, wrap at 899)
         guard let commandServerSocket = commandServerSocket else { return }
         let transactionID = "1"
