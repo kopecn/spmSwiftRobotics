@@ -24,8 +24,7 @@ final class URRobotCommandMessageHandling: @unchecked Sendable, MessageHandling 
     func handleMessage(_ message: String) async {
         await MainActor.run {
             logger.info("🟢 Recv: \(message)")
-            // FIXME:
-            // delegate?.lastDashResponse = message
+            // FIXME: - Add appropriate handler for transaction management.  
         }
     }
 }

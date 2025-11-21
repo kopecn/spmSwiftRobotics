@@ -7,7 +7,7 @@ extension simd_double4x4 {
     ///   - alpha: Link twist (angle in radians around x axis)
     ///   - d: Link offset (distance along z axis)
     ///   - theta: Joint angle (angle in radians around z axis)
-    init(denavitHartenberg a: Double, alpha: Double, d: Double, theta: Double) {
+    public init(denavitHartenberg a: Double, alpha: Double, d: Double, theta: Double) {
         let ct: Double = cos(theta)
         let st: Double = sin(theta)
         let ca: Double = cos(alpha)
@@ -31,7 +31,7 @@ extension simd_double4x4 {
     ///   - ca: cosine of the link twist (angle in radians around x axis)
     ///   - d: Link offset (distance along z axis)
     ///   - theta: Joint angle (angle in radians around z axis)
-    init(denavitHartenberg a: Double, ca: Double, sa: Double, d: Double, theta: Double) {
+    public init(denavitHartenberg a: Double, ca: Double, sa: Double, d: Double, theta: Double) {
         let ct: Double = cos(theta)
         let st: Double = sin(theta)
 

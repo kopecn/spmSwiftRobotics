@@ -1,13 +1,17 @@
+import SwiftRobotics
+
 /// Extension for `URRobotCommandHandler` providing high-level robot command methods.
 /// These methods send formatted commands to the UR Command Client via a socket connection.
 extension URRobotCommandHandler {
 
-    /// Sends a formatted dashboard command to the robot.
-    /// - Parameter command: The `URCommand` to send.
-    private func sendCommand(_ command: URCommand) {
-        let msg = "<1,\(command.commandString)>"
-        // TODO: Implement transaction handling here.
-        commandServerSocket?.send(msg)
+    /// Sends a formatted command to the robot using transaction protocol.
+    /// - Parameter command: The `RobotCommand` to send.
+    private func sendCommand(_ command: RobotCommand) {
+        // TODO: Implement proper transaction ID management (increment, wrap at 899)
+        guard let commandServerSocket = commandServerSocket else { return }
+        let transactionID = "1"
+        let msg = command.serialize(transactionID: transactionID)
+        commandServerSocket.send(msg)
     }
 
     /// Initializes the robot by sending the `.initRobot` command.

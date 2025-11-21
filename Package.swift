@@ -27,17 +27,24 @@ let package = Package(
         .target(
             name: "SwiftRobotics",
             dependencies: [
-                "SwiftRoboticAssets",
-                .product(name: "NIOHandler", package: "spmSocketHandlers"),
-                .product(name: "Logging", package: "swift-log"),
-                .product(name: "OpenCombine", package: "OpenCombine"),
-                .product(name: "OpenCombineDispatch", package: "OpenCombine"),
                 .product(name: "FoundationTools", package: "spmFoundationTools"),
                 .product(name: "FoundationCommon", package: "spmFoundationTools"),
                 .product(name: "FoundationTypes", package: "spmFoundationTools"),
                 .product(name: "kvSIMD", package: "kvSIMD.swift"),
             ],
             path: "Sources/SwiftRobotics"
+        ),
+        .target(
+            name: "SwiftRoboticsSockets",
+            dependencies: [
+                "SwiftRobotics",
+                "SwiftRoboticAssets",
+                .product(name: "NIOHandler", package: "spmSocketHandlers"),
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "OpenCombine", package: "OpenCombine"),
+                .product(name: "OpenCombineDispatch", package: "OpenCombine"),
+            ],
+            path: "Sources/SwiftRoboticsSockets"
         ),
         .target(
             name: "SwiftRoboticAssets",
