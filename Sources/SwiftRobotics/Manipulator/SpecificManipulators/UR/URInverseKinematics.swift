@@ -9,6 +9,8 @@ public struct URInverseKinematics {
     let l1: KinematicLinkDH
     let l2: KinematicLinkDH
     let l3: KinematicLinkDH
+    let l5: KinematicLinkDH
+    let l6: KinematicLinkDH
     let a2: Double
     let a3: Double
 
@@ -18,7 +20,7 @@ public struct URInverseKinematics {
     var psi: Double = 0
     var phi: Double = 0
     var transform6to1: simd_double4x4 = matrix_identity_double4x4
-    var transform5to6: simd_double4x4 = matrix_identity_double4x4
+    var transform1to6: simd_double4x4 = matrix_identity_double4x4
     var transform1to4: simd_double4x4 = matrix_identity_double4x4
     var vector1to3: SIMD4<Double> = SIMD4(0, 0, 0, 0)
 
@@ -42,13 +44,15 @@ public struct URInverseKinematics {
     ) {
         l1 = link1
         l2 = link3
+        l5 = link5
+        l6 = link6
         a2 = link2.a
         a3 = link3.a
         l3 = link3
         d4 = link4.d
         d6 = link6.d
         d6Vect = simd_double4(0, 0, -link6.d, 1)
-        d4Vect = simd_double4(0, -d4, 0, 1)
+        d4Vect = simd_double4(0, -link4.d, 0, 1)
     }
 
     /// ψ = atan2 ((P05 )y,(P05 )x)
@@ -91,12 +95,10 @@ public struct URInverseKinematics {
         theta3: Double
     ) -> Double {
         -atan2(
-            self.vector1to3[1],
-            -self.vector1to3[0]
+            self.vector1to3[1], -self.vector1to3[0]
+        ) + asin(
+            (self.a3 * sin(self.theta3)) / simd_length(self.vector1to3)
         )
-            + asin(
-                self.a3 * sin(self.theta3) * simd_length(self.vector1to3)
-            )
     }
 
     private func getTheta3(whichPose: URRobotPostureType) -> Double {
@@ -131,7 +133,7 @@ public struct URInverseKinematics {
 
     private func getTheta6(transform1to6: simd_double4x4) -> Double {
         /// zy zx
-        print("\(-transform1to6[2, 1]) / \(self.sinTheta5), \(transform1to6[2, 0])")
+        // print("\(-transform1to6[2, 1]) / \(self.sinTheta5), \(transform1to6[2, 0])")
         return atan2(-transform1to6[2, 1] / self.sinTheta5, transform1to6[2, 0] / self.sinTheta5)
     }
 
@@ -179,14 +181,13 @@ public struct URInverseKinematics {
         self.sinTheta5 = sin(self.theta5)
 
         // Compute T_16 (transform from frame 1 to frame 6) for theta6 calculation
-        let transform1to6 = l1.getPose(theta: theta1).inverse * pose.pose
-        self.theta6 = getTheta6(transform1to6: transform1to6)
+        self.transform1to6 = l1.getPose(theta: theta1).inverse * pose.pose
+        self.transform6to1 = self.transform1to6.inverse
+        self.theta6 = getTheta6(transform1to6: transform6to1)
 
-        self.transform5to6 = l1.getPose(theta: self.theta6)
 
-        self.transform6to1 = transform1to6.inverse
 
-        self.transform1to4 = self.transform6to1 * (l1.getPose(theta: theta5) * self.transform5to6).inverse
+        self.transform1to4 = self.transform1to6 * (l5.getPose(theta: theta5) * l6.getPose(theta: self.theta6)).inverse
 
         self.vector1to3 = self.transform1to4 * d4Vect - vectAdj
 

@@ -41,7 +41,7 @@ let ur5eIKTruthTable: [IKTruthTableEntry] = [
             SIMD4<Double>(0.00000, 0.00000, 1.00000, 0.00000),  // Column 2 (Z-axis)
             SIMD4<Double>(0.20082, -0.13330, 0.95482, 1.00000)  // Column 3 (Translation)
         ),
-        postureType: .shoulderRightElbowDownWristUp,
+        postureType: .shoulderRightElbowUpWristUp,
         expectedJointAngles: [0.0, -2.35619, 0.78539, 0.0, 1.570796, 1.570796]
     ),
     // IKTruthTableEntry(
