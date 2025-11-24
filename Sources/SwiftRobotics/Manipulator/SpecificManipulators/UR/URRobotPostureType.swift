@@ -31,4 +31,47 @@ public enum URRobotPostureType: Int {
             return "Shoulder Right, Elbow Up, Wrist Down"
         }
     }
+
+    /// is Elbow up?
+    public var elbowUp: Bool {
+        switch self {
+        case .shoulderLeftElbowUpWristDown,
+            .shoulderLeftElbowUpWristUp,
+            .shoulderRightElbowUpWristUp,
+            .shoulderRightElbowUpWristDown:
+            return true
+
+        default:
+            return false
+        }
+    }
+
+    /// is Shoulder Left?
+    public var shoulderLeft: Bool {
+        switch self {
+        case .shoulderLeftElbowUpWristDown,
+            .shoulderLeftElbowUpWristUp,
+            .shoulderLeftElbowDownWristDown,
+            .shoulderLeftElbowDownWristUp:
+            return true
+
+        default:
+            return false
+        }
+    }
+
+    /// is Wrist Up?
+    public var wristUp: Bool {
+        switch self {
+        case 
+            .shoulderLeftElbowUpWristUp,
+            .shoulderLeftElbowDownWristUp,
+            .shoulderRightElbowDownWristUp,
+            .shoulderRightElbowUpWristUp:
+            return true
+
+        default:
+            return false
+        }
+    }
 }

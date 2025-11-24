@@ -1,4 +1,34 @@
-class ManipulatorUR: ManipulatorSerial {}
+class ManipulatorUR: ManipulatorSerial {
+    var inverseKinematics: URInverseKinematics?
+
+    override public init() {
+        super.init()
+    }
+
+    override init(links: [any KinematicLinkProtocol]) {
+        super.init(links: links)
+
+        // Initialize IK calculator if we have 6 DH links
+        guard links.count == 6,
+              let link1 = links[0] as? KinematicLinkDH,
+              let link2 = links[1] as? KinematicLinkDH,
+              let link3 = links[2] as? KinematicLinkDH,
+              let link4 = links[3] as? KinematicLinkDH,
+              let link5 = links[4] as? KinematicLinkDH,
+              let link6 = links[5] as? KinematicLinkDH else {
+            return
+        }
+
+        self.inverseKinematics = URInverseKinematics(
+            link1: link1,
+            link2: link2,
+            link3: link3,
+            link4: link4,
+            link5: link5,
+            link6: link6
+        )
+    }
+}
 
 class ManipulatorUR10e: ManipulatorUR {
     /// Initializes a new `ManipulatorUR10e`.

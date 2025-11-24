@@ -7,11 +7,25 @@ public struct TestConfiguration {
     // MARK: - Host Configuration
 
     /// The IP address of the host machine for robot callbacks
-    /// Set this manually to the IP address where your test machine is reachable by the robot
-    /// Example: "192.168.1.100"
-    /// Leave as-is to auto-detect the local IP address
+    ///
+    /// **For Docker Desktop (macOS/Windows):** Use "host.docker.internal" - no firewall issues!
+    /// **For Docker on Linux:** Use "172.17.0.1" (Docker bridge) or host IP
+    /// **For real robot on network:** Use your machine's network IP (e.g., "192.168.1.109")
+    ///
+    /// The robot inside Docker needs to connect BACK to the host machine.
+    /// Docker provides special hostnames for this purpose.
     public static var hostCallbackIP: String {
-        return (try? NetworkUtilities.getLocalIPAddress()) ?? "192.168.1.100"
+        // Default to Docker Desktop's host gateway (macOS/Windows - no firewall prompts!)
+        return "host.docker.internal"
+
+        // For Docker on Linux, use Docker bridge IP:
+        // return "172.17.0.1"
+
+        // For real robot testing, use your machine's network IP (requires firewall exception):
+        // return "192.168.1.109"
+
+        // Or auto-detect (may trigger firewall prompts):
+        // return (try? NetworkUtilities.getLocalIPAddress()) ?? "host.docker.internal"
     }
 
     // MARK: - Robot Configuration

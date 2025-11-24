@@ -61,6 +61,7 @@ struct CommandControlSocketTests {
             ipAddress: TestConfiguration.robotIP,
             port: TestConfiguration.urScriptPort
         )
+        scriptHandler.callbackIPAddress = TestConfiguration.hostCallbackIP
 
         scriptHandler.toggleConnection()
 

@@ -99,6 +99,8 @@ docker run --rm -it \
   -p 29999:29999 \
   -p 30001:30001 \
   -p 30004:30004 \
+  -p 50001:50001 \
+  -p 50002:50002 \
   -v <path-to-your-programs-directory>:/ursim/programs \
   --platform=linux/amd64 \
   universalrobots/ursim_e-series
