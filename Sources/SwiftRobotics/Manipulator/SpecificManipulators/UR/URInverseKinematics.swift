@@ -3,17 +3,21 @@ import simd
 public struct URInverseKinematics {
 
     let d6: Double
+    let d6Vect: simd_double4
     let d4: Double
+    let d4Vect: simd_double4
     let l1: KinematicLinkDH
     let l2: KinematicLinkDH
     let l3: KinematicLinkDH
     let a2: Double
     let a3: Double
 
+    let vectAdj = simd_double4(0, 0, 0, 1)
+
     var vector0to5: SIMD4<Double> = SIMD4(0, 0, 0, 0)
     var psi: Double = 0
     var phi: Double = 0
-    var transform1to6: simd_double4x4 = matrix_identity_double4x4
+    var transform6to1: simd_double4x4 = matrix_identity_double4x4
     var transform5to6: simd_double4x4 = matrix_identity_double4x4
     var transform1to4: simd_double4x4 = matrix_identity_double4x4
     var vector1to3: SIMD4<Double> = SIMD4(0, 0, 0, 0)
@@ -43,6 +47,8 @@ public struct URInverseKinematics {
         l3 = link3
         d4 = link4.d
         d6 = link6.d
+        d6Vect = simd_double4(0, 0, -link6.d, 1)
+        d4Vect = simd_double4(0, -d4, 0, 1)
     }
 
     /// ψ = atan2 ((P05 )y,(P05 )x)
@@ -51,7 +57,7 @@ public struct URInverseKinematics {
     /// X or Y components.
     private var getPsi: Double {
         /// ψ= atan2 (P05 )y,(P05 )x
-        atan2(vector0to5[0], vector0to5[1])
+        atan2(vector0to5[1], vector0to5[0])
     }
 
     /// φ= ±arccos (d4 / (P05 )xy)
@@ -66,9 +72,9 @@ public struct URInverseKinematics {
 
     private func vector1to6z(
         pose: simd_double4x4,
-        theta: Double
+        theta1: Double
     ) -> Double {
-        pose[0][3] * sin(theta) + pose[1][3] * cos(theta)
+        return pose[3][0] * sin(theta1) - pose[3][1] * cos(theta1)
     }
 
     private func getTheta1(
@@ -117,18 +123,21 @@ public struct URInverseKinematics {
         whichPose: URRobotPostureType
     ) -> Double {
         if whichPose.wristUp {
-            return acos((self.vector1to6z - d4) / d6)
+            return acos((self.vector1to6z - self.d4) / self.d6)
         } else {
-            return -acos((self.vector1to6z - d4) / d6)
+            return -acos((self.vector1to6z - self.d4) / self.d6)
         }
     }
 
     private func getTheta6(pose: simd_double4x4) -> Double {
-        atan2(-pose[1, 2] / self.sinTheta5, pose[0, 2] / self.sinTheta5)
+        /// zy zx
+        atan2(-pose[2, 1] / self.sinTheta5, pose[2, 0] / self.sinTheta5)
     }
 
-    private func vector0to5(pose: simd_double4x4, d6: Double) -> SIMD4<Double> {
-        pose * simd_double4(0, 0, -d6, 1) - simd_double4(0, 0, 0, 1)
+    private func vector0to5(
+        pose: simd_double4x4
+    ) -> SIMD4<Double> {
+        return pose * d6Vect - vectAdj
     }
 
     /// Computes the inverse kinematics for the UR manipulator.
@@ -137,11 +146,14 @@ public struct URInverseKinematics {
         whichPose: URRobotPostureType,
         jointWrap: (Int, Int, Int, Int, Int, Int, Int, Int),
     ) -> PostureSerialRobot? {
+        print("------")
 
-        self.vector0to5 = vector0to5(pose: pose.pose, d6: d6)
+        self.vector0to5 = vector0to5(pose: pose.pose)
+        print("vector0to5: \(vector0to5), d6: \(d6)")
 
         self.psi = self.getPsi
         self.phi = self.getPhi
+        print("psi: \(psi), phi: \(phi)")
 
         if psi.isNaN || phi.isNaN {
             return nil
@@ -151,13 +163,13 @@ public struct URInverseKinematics {
         /// being either “left” or “right,”.
         self.theta1 = getTheta1(whichPose: whichPose)
 
-        self.transform1to6 = (l1.getPose(theta: theta1).inverse * pose.pose).inverse
-
-        self.vector1to6z = vector1to6z(pose: pose.pose, theta: theta1)
+        self.vector1to6z = vector1to6z(pose: pose.pose, theta1: theta1)
+        print("vector1to6z: \(vector1to6z)")
 
         /// there are two solutions.
         /// These solutions correspond to the wrist being “down” and “up.”
         self.theta5 = getTheta5(whichPose: whichPose)
+        print("theta1: \(theta1), theta5: \(theta5)")
 
         if self.theta5.isNaN {
             return nil
@@ -169,13 +181,16 @@ public struct URInverseKinematics {
 
         self.transform5to6 = l1.getPose(theta: self.theta6)
 
-        self.transform1to4 = self.transform1to6 * (l1.getPose(theta: theta5) * self.transform5to6).inverse
+        self.transform6to1 = (l1.getPose(theta: theta1).inverse * pose.pose).inverse
 
-        self.vector1to3 = self.transform1to4 * simd_double4(0, -d4, 0, 1) - simd_double4(0, 0, 0, 1)
+        self.transform1to4 = self.transform6to1 * (l1.getPose(theta: theta5) * self.transform5to6).inverse
+
+        self.vector1to3 = self.transform1to4 * d4Vect - vectAdj
 
         /// there are two solutions for θ2 and θ3.
         /// These solutions are known as “elbow up” and “elbow down.”
         self.theta3 = getTheta3(whichPose: whichPose)
+        print("theta3: \(theta3), theta6: \(theta6)")
 
         if self.theta3.isNaN {
             return nil
@@ -189,6 +204,7 @@ public struct URInverseKinematics {
             transform3to4: (l2.getPose(theta: self.theta2) * l3.getPose(theta: self.theta3)).inverse
                 * self.transform1to4
         )
+        print("theta2: \(theta2), theta4: \(theta4)")
 
         return PostureSerialRobot(
             jointAngles: [theta1, theta2, theta3, theta4, theta5, theta6]
