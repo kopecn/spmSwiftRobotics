@@ -129,9 +129,10 @@ public struct URInverseKinematics {
         }
     }
 
-    private func getTheta6(pose: simd_double4x4) -> Double {
+    private func getTheta6(transform1to6: simd_double4x4) -> Double {
         /// zy zx
-        atan2(-pose[2, 1] / self.sinTheta5, pose[2, 0] / self.sinTheta5)
+        print("\(-transform1to6[2, 1]) / \(self.sinTheta5), \(transform1to6[2, 0])")
+        return atan2(-transform1to6[2, 1] / self.sinTheta5, transform1to6[2, 0] / self.sinTheta5)
     }
 
     private func vector0to5(
@@ -160,14 +161,14 @@ public struct URInverseKinematics {
         }
 
         /// The two solutions for θ1 above correspond to the shoulder
-        /// being either “left” or “right,”.
+        /// being either "left" or "right,".
         self.theta1 = getTheta1(whichPose: whichPose)
 
         self.vector1to6z = vector1to6z(pose: pose.pose, theta1: theta1)
         print("vector1to6z: \(vector1to6z)")
 
         /// there are two solutions.
-        /// These solutions correspond to the wrist being “down” and “up.”
+        /// These solutions correspond to the wrist being "down" and "up."
         self.theta5 = getTheta5(whichPose: whichPose)
         print("theta1: \(theta1), theta5: \(theta5)")
 
@@ -177,11 +178,13 @@ public struct URInverseKinematics {
 
         self.sinTheta5 = sin(self.theta5)
 
-        self.theta6 = getTheta6(pose: pose.pose)
+        // Compute T_16 (transform from frame 1 to frame 6) for theta6 calculation
+        let transform1to6 = l1.getPose(theta: theta1).inverse * pose.pose
+        self.theta6 = getTheta6(transform1to6: transform1to6)
 
         self.transform5to6 = l1.getPose(theta: self.theta6)
 
-        self.transform6to1 = (l1.getPose(theta: theta1).inverse * pose.pose).inverse
+        self.transform6to1 = transform1to6.inverse
 
         self.transform1to4 = self.transform6to1 * (l1.getPose(theta: theta5) * self.transform5to6).inverse
 
