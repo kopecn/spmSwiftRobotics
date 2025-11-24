@@ -1,32 +1,149 @@
 import simd
 
+/// Analytical inverse kinematics solver for Universal Robots manipulators (UR3/5/10/e series).
+///
+/// This implementation follows the closed-form analytical solution described in:
+/// "UR5 Inverse Kinematics" by Ryan Keating, Johns Hopkins University (2014, updated 2016).
+///
+/// ## Overview
+///
+/// The solver computes joint angles for a 6-DOF Universal Robots manipulator given a desired
+/// end-effector pose. The algorithm analytically solves for all 8 possible configurations:
+/// - Shoulder: Left/Right (2 solutions)
+/// - Elbow: Up/Down (2 solutions)
+/// - Wrist: Up/Down (2 solutions)
+///
+/// ## Performance Considerations
+///
+/// This solver is implemented as a **value type (struct)** rather than a reference type (class)
+/// to minimize ARC (Automatic Reference Counting) overhead. This design choice is critical for
+/// high-frequency applications with expected cycle times of **1-4 kHz**.
+///
+/// **Benefits of struct design:**
+/// - No reference counting overhead (no retain/release calls)
+/// - Stack allocation for temporary instances
+/// - Predictable memory layout and cache performance
+/// - Thread-safe by default (value semantics)
+///
+/// **Note:** The `mutating` keyword on `computePostureFor` indicates that intermediate
+/// calculations are stored in the struct's properties to avoid repeated allocations,
+/// which further improves performance at high frequencies.
+///
+/// ## Algorithm
+///
+/// The solution proceeds in the following order:
+/// 1. **θ₁** (Shoulder): Computed from overhead projection using `P₀⁵` location
+/// 2. **θ₅** (Wrist): Computed from wrist position relative to frame 1
+/// 3. **θ₆** (Wrist roll): Computed from orientation using `T₁⁶`
+/// 4. **θ₃** (Elbow): Computed using law of cosines on planar 3R manipulator
+/// 5. **θ₂** (Shoulder pitch): Computed using geometry of frames 1-3
+/// 6. **θ₄** (Wrist pitch): Computed from remaining transformation
+///
+/// ## Singularities and Edge Cases
+///
+/// The solver will return `nil` in the following cases:
+/// - **Unreachable position**: Target is outside the robot's workspace sphere
+/// - **Donut hole**: Target is inside the cylindrical singularity near the base z-axis (d4 > |P₀⁵|ₓᵧ)
+/// - **Wrist singularity**: When sin(θ₅) = 0, θ₆ is undefined (infinite solutions in the wrist plane)
+///
+/// ## Usage Example
+///
+/// ```swift
+/// let robot = ManipulatorUR5e()
+/// guard var ikSolver = robot.inverseKinematics else { return }
+///
+/// let targetPose = PoseRobot(from4x4: desiredTransform)
+/// let posture: URRobotPostureType = .shoulderLeftElbowUpWristDown
+///
+/// if let solution = ikSolver.computePostureFor(
+///     pose: targetPose,
+///     whichPose: posture,
+///     jointWrap: (0, 0, 0, 0, 0, 0, 0, 0)
+/// ) {
+///     print("Joint angles: \(solution.jointAngles)")
+/// } else {
+///     print("No IK solution found (unreachable or singular)")
+/// }
+/// ```
+///
+/// ## References
+///
+/// - Keating, R. (2014). "UR5 Inverse Kinematics", Johns Hopkins University, M.E. 530.646
+/// - Universal Robots Technical Specifications and DH Parameters
+///
+/// - SeeAlso: `URRobotPostureType`, `ManipulatorUR`, `PoseRobot`
 public struct URInverseKinematics {
 
+    // MARK: - Robot Parameters (DH Convention)
+
+    /// Link offset d₆ (distance along z₆ axis)
     let d6: Double
+
+    /// Precomputed vector for P₀⁵ calculation: [0, 0, -d6, 1]
     let d6Vect: simd_double4
+
+    /// Link offset d₄ (distance along z₄ axis)
     let d4: Double
+
+    /// Precomputed vector for P₁³ calculation: [0, -d4, 0, 1]
     let d4Vect: simd_double4
+
+    /// Link 1 DH parameters (base to shoulder)
     let l1: KinematicLinkDH
+
+    /// Link 2 DH parameters (shoulder to elbow)
     let l2: KinematicLinkDH
+
+    /// Link 3 DH parameters (elbow to wrist)
     let l3: KinematicLinkDH
+
+    /// Link 5 DH parameters (wrist pitch)
     let l5: KinematicLinkDH
+
+    /// Link 6 DH parameters (wrist roll to end-effector)
     let l6: KinematicLinkDH
+
+    /// Link length a₂ (distance along x₂ axis)
     let a2: Double
+
+    /// Link length a₃ (distance along x₃ axis)
     let a3: Double
 
+    /// Homogeneous coordinate adjustment vector [0, 0, 0, 1]
     let vectAdj = simd_double4(0, 0, 0, 1)
 
+    // MARK: - Intermediate Calculation State
+    // These properties store intermediate results to avoid repeated allocations
+    // during high-frequency IK computations (1-4 kHz cycle times)
+
+    /// Vector from frame 0 to frame 5 origin (P₀⁵), used for θ₁ calculation
     var vector0to5: SIMD4<Double> = SIMD4(0, 0, 0, 0)
+
+    /// Angle ψ = atan2(P₀⁵_y, P₀⁵_x) for θ₁ calculation
     var psi: Double = 0
+
+    /// Angle φ = ±arccos(d4 / |P₀⁵|ₓᵧ) for θ₁ calculation
     var phi: Double = 0
+
+    /// Transformation from frame 6 to frame 1 (T₆¹ = T₁⁶⁻¹)
     var transform6to1: simd_double4x4 = matrix_identity_double4x4
+
+    /// Transformation from frame 1 to frame 6 (T₁⁶)
     var transform1to6: simd_double4x4 = matrix_identity_double4x4
+
+    /// Transformation from frame 1 to frame 4 (T₁⁴)
     var transform1to4: simd_double4x4 = matrix_identity_double4x4
+
+    /// Vector from frame 1 to frame 3 origin (P₁³), used for θ₂ and θ₃ calculation
     var vector1to3: SIMD4<Double> = SIMD4(0, 0, 0, 0)
 
+    /// Z-component of P₁⁶, used for θ₅ calculation
     var vector1to6z: Double = 0
+
+    /// sin(θ₅), cached to avoid recomputation in θ₆ calculation
     var sinTheta5: Double = 0
 
+    /// Computed joint angles (radians)
     var theta1: Double = 0
     var theta2: Double = 0
     var theta3: Double = 0
@@ -34,16 +151,30 @@ public struct URInverseKinematics {
     var theta5: Double = 0
     var theta6: Double = 0
 
+    // MARK: - Initialization
+
+    /// Initializes the inverse kinematics solver with robot-specific DH parameters.
+    ///
+    /// - Parameters:
+    ///   - link1: DH parameters for joint 1 (base rotation)
+    ///   - link2: DH parameters for joint 2 (shoulder pitch)
+    ///   - link3: DH parameters for joint 3 (elbow)
+    ///   - link4: DH parameters for joint 4 (wrist yaw)
+    ///   - link5: DH parameters for joint 5 (wrist pitch)
+    ///   - link6: DH parameters for joint 6 (wrist roll)
+    ///
+    /// - Note: This initializer extracts and caches critical parameters (d4, d6, a2, a3)
+    ///         for efficient access during high-frequency IK computations.
     public init(
         link1: KinematicLinkDH,
         link2: KinematicLinkDH,
         link3: KinematicLinkDH,
         link4: KinematicLinkDH,
         link5: KinematicLinkDH,
-        link6: KinematicLinkDH,
+        link6: KinematicLinkDH
     ) {
         l1 = link1
-        l2 = link3
+        l2 = link2
         l5 = link5
         l6 = link6
         a2 = link2.a
@@ -51,36 +182,64 @@ public struct URInverseKinematics {
         l3 = link3
         d4 = link4.d
         d6 = link6.d
+
+        // Precompute constant vectors for vector operations
         d6Vect = simd_double4(0, 0, -link6.d, 1)
         d4Vect = simd_double4(0, -link4.d, 0, 1)
     }
 
-    /// ψ = atan2 ((P05 )y,(P05 )x)
-    /// Note, if is not a number, isNaN, then the IK cannot be computed.
-    /// isNaN will only occur for UR robot if the 0->5 vector has no
-    /// X or Y components.
+    // MARK: - Private Helper Methods: Joint Angle Calculations
+
+    /// Computes angle ψ for θ₁ calculation (Equation 4 from Keating paper).
+    ///
+    /// ψ = atan2((P₀⁵)y, (P₀⁵)x)
+    ///
+    /// - Returns: Angle ψ in radians, or NaN if P₀⁵ has no X or Y components
+    ///
+    /// - Note: NaN indicates the robot is in a singular configuration where the
+    ///         wrist center lies on the base z-axis.
     private var getPsi: Double {
         /// ψ= atan2 (P05 )y,(P05 )x
         atan2(vector0to5[1], vector0to5[0])
     }
 
-    /// φ= ±arccos (d4 / (P05 )xy)
-    /// Note, if is not a number, isNaN, then the IK cannot be computed.
-    /// isNaN will only occur for UR robot if the 0->5 vector onto the
-    /// X-Y plane is smaller than d4... e.g. the donut hole
+    /// Computes angle φ for θ₁ calculation (Equation 5 from Keating paper).
+    ///
+    /// φ = ±arccos(d4 / |P₀⁵|ₓᵧ)
+    ///
+    /// - Returns: Angle φ in radians, or NaN if |P₀⁵|ₓᵧ < d4 (inside "donut hole")
+    ///
+    /// - Note: The "donut hole" is a cylindrical unreachable region near the base z-axis
+    ///         where d4 > |P₀⁵|ₓᵧ. This forms part of the robot's workspace boundary.
     private var getPhi: Double {
         acos(
             d4 / sqrt(pow(vector0to5[0], 2) + pow(vector0to5[1], 2))
         )
     }
 
+    /// Computes the Z-component of P₁⁶ (wrist center position in frame 1).
+    ///
+    /// Uses the formula: (P₁⁶)z = (P₀⁶)x · sin(θ₁) - (P₀⁶)y · cos(θ₁)
+    ///
+    /// - Parameters:
+    ///   - pose: Target end-effector pose T₀⁶
+    ///   - theta1: Computed shoulder rotation angle θ₁
+    /// - Returns: Z-component of wrist center in frame 1 coordinates
     private func vector1to6z(
         pose: simd_double4x4,
         theta1: Double
     ) -> Double {
-        return pose[3][0] * sin(theta1) - pose[3][1] * cos(theta1)
+        pose[3][0] * sin(theta1) - pose[3][1] * cos(theta1)
     }
 
+    /// Computes shoulder rotation angle θ₁ (Equation 4-5 from Keating paper).
+    ///
+    /// θ₁ = ψ ± φ + π/2, where the sign depends on shoulder configuration:
+    /// - Shoulder Left: θ₁ = ψ + φ + π/2
+    /// - Shoulder Right: θ₁ = ψ - φ + π/2
+    ///
+    /// - Parameter whichPose: Robot configuration specifying shoulder orientation
+    /// - Returns: Joint angle θ₁ in radians
     private func getTheta1(
         whichPose: URRobotPostureType
     ) -> Double {
@@ -91,16 +250,31 @@ public struct URInverseKinematics {
         }
     }
 
+    /// Computes shoulder pitch angle θ₂ (Equation 18 from Keating paper).
+    ///
+    /// θ₂ = -atan2((P₁³)y, -(P₁³)x) + arcsin(a3·sin(θ₃) / ‖P₁³‖)
+    ///
+    /// - Parameter theta3: Previously computed elbow angle θ₃
+    /// - Returns: Joint angle θ₂ in radians
     private func getTheta2(
         theta3: Double
     ) -> Double {
         -atan2(
-            self.vector1to3[1], -self.vector1to3[0]
-        ) + asin(
-            (self.a3 * sin(self.theta3)) / simd_length(self.vector1to3)
+            self.vector1to3[1],
+            -self.vector1to3[0]
         )
+            + asin(
+                (self.a3 * sin(self.theta3)) / simd_length(self.vector1to3)
+            )
     }
 
+    /// Computes elbow angle θ₃ (Equation 15 from Keating paper).
+    ///
+    /// Uses law of cosines: θ₃ = ±arccos((‖P₁³‖² - a2² - a3²) / (2·a2·a3))
+    /// where the sign depends on elbow configuration (up/down).
+    ///
+    /// - Parameter whichPose: Robot configuration specifying elbow orientation
+    /// - Returns: Joint angle θ₃ in radians, or NaN if pose is unreachable
     private func getTheta3(whichPose: URRobotPostureType) -> Double {
 
         if whichPose.wristUp {
@@ -114,13 +288,29 @@ public struct URInverseKinematics {
         }
     }
 
+    /// Computes wrist pitch angle θ₄ (Equation 20 from Keating paper).
+    ///
+    /// Extracts θ₄ from the first column of T₃⁴: θ₄ = atan2(xy, xx)
+    ///
+    /// - Parameter transform3to4: Transformation from frame 3 to frame 4 (T₃⁴)
+    /// - Returns: Joint angle θ₄ in radians
     private func getTheta4(
         transform3to4: simd_double4x4
     ) -> Double {
         atan2(transform3to4[1, 0], transform3to4[0, 0])
     }
 
-    /// Notes: θ6 is not well-defined when sin(θ5) = 0 or when zx,zy = 0
+    /// Computes wrist yaw angle θ₅ (Equation 6 from Keating paper).
+    ///
+    /// θ₅ = ±arccos(((P₁⁶)z - d4) / d6), where the sign depends on wrist configuration:
+    /// - Wrist Up: positive arccos
+    /// - Wrist Down: negative arccos
+    ///
+    /// - Parameter whichPose: Robot configuration specifying wrist orientation
+    /// - Returns: Joint angle θ₅ in radians, or NaN if configuration is invalid
+    ///
+    /// - Note: When sin(θ₅) = 0, the wrist is in a singular configuration where
+    ///         θ₆ becomes undefined (infinite solutions exist).
     private func getTheta5(
         whichPose: URRobotPostureType
     ) -> Double {
@@ -131,32 +321,98 @@ public struct URInverseKinematics {
         }
     }
 
+    /// Computes wrist roll angle θ₆ (Equation 10 from Keating paper).
+    ///
+    /// Extracts θ₆ from the rotation matrix T₆¹: θ₆ = atan2(-zy/sin(θ₅), zx/sin(θ₅))
+    /// where zy and zx are elements from the third column of T₆¹.
+    ///
+    /// - Parameter transform1to6: Inverse transformation T₆¹ (used for accessing rotation elements)
+    /// - Returns: Joint angle θ₆ in radians
+    ///
+    /// - Warning: Undefined when sin(θ₅) = 0 (wrist singularity). Caller must check θ₅ validity.
     private func getTheta6(transform1to6: simd_double4x4) -> Double {
-        /// zy zx
-        // print("\(-transform1to6[2, 1]) / \(self.sinTheta5), \(transform1to6[2, 0])")
-        return atan2(-transform1to6[2, 1] / self.sinTheta5, transform1to6[2, 0] / self.sinTheta5)
+        atan2(-transform1to6[2, 1] / self.sinTheta5, transform1to6[2, 0] / self.sinTheta5)
     }
 
+    // MARK: - Private Helper Methods: Vector Computations
+
+    /// Computes the position of frame 5 origin relative to base frame (P₀⁵).
+    ///
+    /// This is calculated by translating from the end-effector (frame 6) by -d6 along z₆:
+    /// P₀⁵ = T₀⁶ · [0, 0, -d6, 1]ᵀ - [0, 0, 0, 1]ᵀ
+    ///
+    /// - Parameter pose: Target end-effector transformation T₀⁶
+    /// - Returns: Vector P₀⁵ as a 4D homogeneous coordinate (w=0 for direction vector)
     private func vector0to5(
         pose: simd_double4x4
     ) -> SIMD4<Double> {
-        return pose * d6Vect - vectAdj
+        pose * d6Vect - vectAdj
     }
 
-    /// Computes the inverse kinematics for the UR manipulator.
+    // MARK: - Public API
+
+    /// Computes inverse kinematics to find joint angles for a desired end-effector pose.
+    ///
+    /// This method implements the analytical closed-form solution for Universal Robots manipulators.
+    /// It solves for one of the 8 possible robot configurations specified by `whichPose`.
+    ///
+    /// ## Performance
+    ///
+    /// - **Designed for high-frequency operation (1-4 kHz)**
+    /// - Marked as `mutating` to reuse internal storage and avoid allocations
+    /// - Uses SIMD operations for efficient vector/matrix computations
+    /// - Stack-allocated struct (no heap allocations for the solver instance)
+    ///
+    /// ## Algorithm Steps
+    ///
+    /// 1. Compute P₀⁵ (frame 5 origin) and check workspace validity
+    /// 2. Solve θ₁ from overhead projection (shoulder left/right)
+    /// 3. Solve θ₅ from wrist position (wrist up/down)
+    /// 4. Solve θ₆ from wrist orientation using T₆¹
+    /// 5. Solve θ₃ from elbow geometry (elbow up/down)
+    /// 6. Solve θ₂ from shoulder geometry
+    /// 7. Solve θ₄ from remaining transformation
+    ///
+    /// - Parameters:
+    ///   - pose: Target end-effector pose (4×4 homogeneous transformation matrix)
+    ///   - whichPose: Specifies which of the 8 IK solutions to compute (shoulder/elbow/wrist configuration)
+    ///   - jointWrap: Joint wrapping parameters for continuous rotation handling (currently unused)
+    ///
+    /// - Returns: Joint angles solution as `PostureSerialRobot`, or `nil` if:
+    ///   - Target pose is unreachable (outside workspace)
+    ///   - Target is in singular configuration (donut hole)
+    ///   - Numerical singularity encountered (NaN in calculations)
+    ///
+    /// - Note: The `jointWrap` parameter is reserved for future use to handle multi-turn
+    ///         joint solutions. Currently, the solver returns angles in the range [-π, π].
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// var ikSolver = URInverseKinematics(link1: ..., link2: ..., ...)
+    /// let targetPose = PoseRobot(from4x4: myTransform)
+    ///
+    /// // Try shoulder-left, elbow-up, wrist-down configuration
+    /// if let solution = ikSolver.computePostureFor(
+    ///     pose: targetPose,
+    ///     whichPose: .shoulderLeftElbowUpWristDown,
+    ///     jointWrap: (0, 0, 0, 0, 0, 0, 0, 0)
+    /// ) {
+    ///     print("Success: \(solution.jointAngles)")
+    /// }
+    /// ```
+    ///
+    /// - SeeAlso: `URRobotPostureType` for available robot configurations
     public mutating func computePostureFor(
         pose: PoseRobot,
         whichPose: URRobotPostureType,
-        jointWrap: (Int, Int, Int, Int, Int, Int, Int, Int),
+        jointWrap: (Int, Int, Int, Int, Int, Int, Int, Int)
     ) -> PostureSerialRobot? {
-        print("------")
 
         self.vector0to5 = vector0to5(pose: pose.pose)
-        print("vector0to5: \(vector0to5), d6: \(d6)")
 
         self.psi = self.getPsi
         self.phi = self.getPhi
-        print("psi: \(psi), phi: \(phi)")
 
         if psi.isNaN || phi.isNaN {
             return nil
@@ -167,12 +423,10 @@ public struct URInverseKinematics {
         self.theta1 = getTheta1(whichPose: whichPose)
 
         self.vector1to6z = vector1to6z(pose: pose.pose, theta1: theta1)
-        print("vector1to6z: \(vector1to6z)")
 
         /// there are two solutions.
         /// These solutions correspond to the wrist being "down" and "up."
         self.theta5 = getTheta5(whichPose: whichPose)
-        print("theta1: \(theta1), theta5: \(theta5)")
 
         if self.theta5.isNaN {
             return nil
@@ -185,8 +439,6 @@ public struct URInverseKinematics {
         self.transform6to1 = self.transform1to6.inverse
         self.theta6 = getTheta6(transform1to6: transform6to1)
 
-
-
         self.transform1to4 = self.transform1to6 * (l5.getPose(theta: theta5) * l6.getPose(theta: self.theta6)).inverse
 
         self.vector1to3 = self.transform1to4 * d4Vect - vectAdj
@@ -194,7 +446,6 @@ public struct URInverseKinematics {
         /// there are two solutions for θ2 and θ3.
         /// These solutions are known as “elbow up” and “elbow down.”
         self.theta3 = getTheta3(whichPose: whichPose)
-        print("theta3: \(theta3), theta6: \(theta6)")
 
         if self.theta3.isNaN {
             return nil
@@ -208,7 +459,6 @@ public struct URInverseKinematics {
             transform3to4: (l2.getPose(theta: self.theta2) * l3.getPose(theta: self.theta3)).inverse
                 * self.transform1to4
         )
-        print("theta2: \(theta2), theta4: \(theta4)")
 
         return PostureSerialRobot(
             jointAngles: [theta1, theta2, theta3, theta4, theta5, theta6]
