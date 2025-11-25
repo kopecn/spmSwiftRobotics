@@ -6,67 +6,6 @@ import Network
 /// Network utilities for testing socket connections
 public struct NetworkUtilities {
 
-    // MARK: - IP Address Detection
-
-    /// Gets the local IP address of this machine
-    /// - Returns: The local IP address (e.g., "192.168.1.100")
-    /// - Throws: NetworkError if IP cannot be determined
-    public static func getLocalIPAddress() throws -> String {
-        var address: String?
-
-        // Get list of all interfaces on the local machine
-        var ifaddr: UnsafeMutablePointer<ifaddrs>?
-        guard getifaddrs(&ifaddr) == 0 else {
-            throw NetworkError.cannotGetInterfaces
-        }
-        defer { freeifaddrs(ifaddr) }
-
-        var ptr = ifaddr
-        while ptr != nil {
-            defer { ptr = ptr?.pointee.ifa_next }
-
-            guard let interface = ptr?.pointee else { continue }
-
-            let addrFamily = interface.ifa_addr.pointee.sa_family
-            if addrFamily == UInt8(AF_INET) || addrFamily == UInt8(AF_INET6) {
-
-                // Interface name
-                let name = String(cString: interface.ifa_name)
-
-                // Only consider WiFi (en0) and Ethernet (en1, en2)
-                guard name.hasPrefix("en") else { continue }
-
-                // Convert interface address to a human readable string
-                var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-                getnameinfo(
-                    interface.ifa_addr,
-                    socklen_t(interface.ifa_addr.pointee.sa_len),
-                    &hostname,
-                    socklen_t(hostname.count),
-                    nil,
-                    socklen_t(0),
-                    NI_NUMERICHOST
-                )
-
-                let ipAddress = String(cString: hostname)
-
-                // Prefer IPv4 addresses
-                if addrFamily == UInt8(AF_INET) {
-                    // Skip loopback
-                    guard !ipAddress.hasPrefix("127.") else { continue }
-                    address = ipAddress
-                    break  // Found IPv4, use it
-                }
-            }
-        }
-
-        guard let finalAddress = address else {
-            throw NetworkError.noIPAddressFound
-        }
-
-        return finalAddress
-    }
-
     // MARK: - Port Availability
 
     /// Checks if a port is available for binding
@@ -182,17 +121,11 @@ public struct NetworkUtilities {
 // MARK: - Errors
 
 public enum NetworkError: Error, CustomStringConvertible {
-    case cannotGetInterfaces
-    case noIPAddressFound
     case timeout(port: Int, timeout: TimeInterval)
     case connectionFailed
 
     public var description: String {
         switch self {
-        case .cannotGetInterfaces:
-            return "Failed to get network interfaces"
-        case .noIPAddressFound:
-            return "No IP address found on any network interface"
         case .timeout(let port, let timeout):
             return "Timeout waiting for port \(port) after \(timeout) seconds"
         case .connectionFailed:

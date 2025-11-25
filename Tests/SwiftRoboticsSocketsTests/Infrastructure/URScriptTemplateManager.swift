@@ -37,22 +37,15 @@ public struct URScriptTemplateManager {
         return script.replacingOccurrences(of: hostIPPlaceholder, with: ip)
     }
 
-    /// Gets the host machine's IP address automatically
-    /// - Returns: The local IP address (e.g., "192.168.1.100")
-    /// - Throws: Error if IP cannot be determined
-    public static func getHostIPAddress() throws -> String {
-        return try NetworkUtilities.getLocalIPAddress()
-    }
-
     // MARK: - Convenience Methods
 
     /// Prepares a complete urScript for testing with IP replacement
-    /// - Parameter hostIP: Optional manual IP override. If nil, auto-detects host IP
+    /// - Parameter hostIP: Optional manual IP override. If nil, uses TestConfiguration.hostCallbackIP
     /// - Returns: The complete urScript ready to send to robot
-    /// - Throws: Error if template loading or IP detection fails
+    /// - Throws: Error if template loading fails
     public static func prepareScriptForTest(hostIP: String? = nil) throws -> String {
         let template = try loadTemplate()
-        let ipAddress = try hostIP ?? getHostIPAddress()
+        let ipAddress = hostIP ?? TestConfiguration.hostCallbackIP
         return replaceHostIP(in: template, with: ipAddress)
     }
 

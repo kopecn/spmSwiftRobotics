@@ -1,3 +1,4 @@
+import Foundation
 import simd
 
 /// Analytical inverse kinematics solver for Universal Robots manipulators (UR3/5/10/e series).

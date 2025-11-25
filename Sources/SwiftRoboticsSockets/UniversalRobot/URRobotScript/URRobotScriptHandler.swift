@@ -34,8 +34,7 @@ public class URRobotScriptHandler: OpenCombine.ObservableObject {
 
     /// IP address for robot callbacks (used in urScript template replacement).
     /// When set, the <<HOST_CALLBACK_IPADDRESS>> placeholder in urScript will be replaced with this value.
-    /// If nil, the placeholder will be replaced with the local machine's IP address (auto-detected).
-    /// Defaults to nil (auto-detection).
+    /// If nil, the placeholder will not be replaced.
     public var callbackIPAddress: String? = nil
 
     /// Cancellable for connection state publisher subscription.
@@ -168,8 +167,7 @@ public class URRobotScriptHandler: OpenCombine.ObservableObject {
     /// - Parameter fromPath: Optional file path to load the URScript from.
     ///
     /// If the loaded script contains the placeholder `<<HOST_CALLBACK_IPADDRESS>>`, it will be
-    /// automatically replaced with the callback IP address (either from the `callbackIPAddress`
-    /// property or auto-detected from the local machine).
+    /// replaced with the `callbackIPAddress` property if set.
     public func loadAndPushURScript(fromPath path: String? = nil) {
         var script: String?
 
@@ -197,111 +195,24 @@ public class URRobotScriptHandler: OpenCombine.ObservableObject {
             return
         }
 
-        // Replace callback IP address placeholder if present
+        // Replace callback IP address placeholder if present and callbackIPAddress is set
         let placeholder = "<<HOST_CALLBACK_IPADDRESS>>"
         if finalScript.contains(placeholder) {
-            // Use explicit callback IP if set, otherwise try to auto-detect
-            let replacementIP: String
             if let explicitIP = callbackIPAddress {
-                replacementIP = explicitIP
-                logger.info("🟢 Using explicit callback IP: \(replacementIP)")
+                finalScript = finalScript.replacingOccurrences(of: placeholder, with: explicitIP)
+                logger.info("✅ Replaced \(placeholder) with \(explicitIP)")
             } else {
-                // Attempt to auto-detect local IP address
-                do {
-                    replacementIP = try getLocalIPAddress()
-                    logger.info("🟢 Auto-detected callback IP: \(replacementIP)")
-                } catch {
-                    logger.error("🔴 Failed to auto-detect callback IP: \(error.localizedDescription)")
-                    logger.warning("⚠️  Sending script without IP replacement")
-                    urScriptClientSocket?.send(finalScript)
-                    return
-                }
+                logger.warning("⚠️  Script contains \(placeholder) but callbackIPAddress is not set")
             }
-
-            finalScript = finalScript.replacingOccurrences(of: placeholder, with: replacementIP)
-            logger.info("✅ Replaced \(placeholder) with \(replacementIP)")
         }
 
         urScriptClientSocket?.send(finalScript)
-    }
-
-    /// Gets the local IP address of this machine.
-    /// - Returns: The local IP address (e.g., "192.168.1.100")
-    /// - Throws: Error if IP cannot be determined
-    private func getLocalIPAddress() throws -> String {
-        var address: String?
-
-        // Get list of all interfaces on the local machine
-        var ifaddr: UnsafeMutablePointer<ifaddrs>?
-        guard getifaddrs(&ifaddr) == 0 else {
-            throw URScriptError.cannotGetInterfaces
-        }
-        defer { freeifaddrs(ifaddr) }
-
-        var ptr = ifaddr
-        while ptr != nil {
-            defer { ptr = ptr?.pointee.ifa_next }
-
-            guard let interface = ptr?.pointee else { continue }
-
-            let addrFamily = interface.ifa_addr.pointee.sa_family
-            if addrFamily == UInt8(AF_INET) {  // IPv4 only
-
-                // Interface name
-                let name = String(cString: interface.ifa_name)
-
-                // Only consider WiFi (en0) and Ethernet (en1, en2)
-                guard name.hasPrefix("en") else { continue }
-
-                // Convert interface address to a human readable string
-                var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-                getnameinfo(
-                    interface.ifa_addr,
-                    socklen_t(interface.ifa_addr.pointee.sa_len),
-                    &hostname,
-                    socklen_t(hostname.count),
-                    nil,
-                    socklen_t(0),
-                    NI_NUMERICHOST
-                )
-
-                let ipAddress = String(cString: hostname)
-
-                // Skip loopback
-                guard !ipAddress.hasPrefix("127.") else { continue }
-                address = ipAddress
-                break  // Found IPv4, use it
-            }
-        }
-
-        guard let finalAddress = address else {
-            throw URScriptError.noIPAddressFound
-        }
-
-        return finalAddress
     }
 
     /// Handles incoming URScript messages.
     /// - Parameter input: The message received from the URScript server.
     private func handleURScriptMessages(_ input: String) async {
         logger.debug("🔵 Handled URScript input: \(input)")
-    }
-}
-
-// MARK: - URScript Errors
-
-/// Errors that can occur during URScript processing
-public enum URScriptError: Error, CustomStringConvertible {
-    case cannotGetInterfaces
-    case noIPAddressFound
-
-    public var description: String {
-        switch self {
-        case .cannotGetInterfaces:
-            return "Failed to get network interfaces"
-        case .noIPAddressFound:
-            return "No IP address found on any network interface"
-        }
     }
 }
 
