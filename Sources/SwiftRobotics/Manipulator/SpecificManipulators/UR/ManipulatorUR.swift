@@ -10,12 +10,13 @@ class ManipulatorUR: ManipulatorSerial {
 
         // Initialize IK calculator if we have 6 DH links
         guard links.count == 6,
-              let link1 = links[0] as? KinematicLinkDH,
-              let link2 = links[1] as? KinematicLinkDH,
-              let link3 = links[2] as? KinematicLinkDH,
-              let link4 = links[3] as? KinematicLinkDH,
-              let link5 = links[4] as? KinematicLinkDH,
-              let link6 = links[5] as? KinematicLinkDH else {
+            let link1 = links[0] as? KinematicLinkDH,
+            let link2 = links[1] as? KinematicLinkDH,
+            let link3 = links[2] as? KinematicLinkDH,
+            let link4 = links[3] as? KinematicLinkDH,
+            let link5 = links[4] as? KinematicLinkDH,
+            let link6 = links[5] as? KinematicLinkDH
+        else {
             return
         }
 
@@ -37,7 +38,7 @@ class ManipulatorUR10e: ManipulatorUR {
             KinematicLinkDH(
 
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.1807,
                 mass: 7.369,
                 centerOfMass: [0.021, 0.000, 0.027],
@@ -61,7 +62,7 @@ class ManipulatorUR10e: ManipulatorUR {
             ),
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.17415,
                 mass: 2.1,
                 centerOfMass: [0.000, 0.007, 0.018],
@@ -69,7 +70,7 @@ class ManipulatorUR10e: ManipulatorUR {
             ),
             KinematicLinkDH(
                 a: 0.0,
-                alpha: -Double.pi / 2,
+                alpha: -Float.pi / 2,
                 d: 0.11985,
                 mass: 1.98,
                 centerOfMass: [0.000, 0.007, 0.018],
@@ -93,7 +94,7 @@ class ManipulatorUR12e: ManipulatorUR {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.1807,
                 mass: 7.369,
                 centerOfMass: [0.021, 0.000, 0.027],
@@ -117,7 +118,7 @@ class ManipulatorUR12e: ManipulatorUR {
             ),
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.17415,
                 mass: 2.1,
                 centerOfMass: [0.000, 0.007, 0.018],
@@ -125,7 +126,7 @@ class ManipulatorUR12e: ManipulatorUR {
             ),
             KinematicLinkDH(
                 a: 0.0,
-                alpha: -Double.pi / 2,
+                alpha: -Float.pi / 2,
                 d: 0.11985,
                 mass: 1.98,
                 centerOfMass: [0.000, 0.007, 0.018],
@@ -149,7 +150,7 @@ class ManipulatorUR15: ManipulatorUR {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.2186,
                 mass: 9.9883,
                 centerOfMass: [0.000024, -0.033309, 0.025304],
@@ -179,7 +180,7 @@ class ManipulatorUR15: ManipulatorUR {
             ),
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.1824,
                 mass: 2.0890,
                 centerOfMass: [0.000025, -0.019695, 0.016413],
@@ -189,7 +190,7 @@ class ManipulatorUR15: ManipulatorUR {
             ),
             KinematicLinkDH(
                 a: 0.0,
-                alpha: -Double.pi / 2,
+                alpha: -Float.pi / 2,
                 d: 0.1361,
                 mass: 2.0869,
                 centerOfMass: [0.000025, 0.019960, 0.015886],
@@ -217,7 +218,7 @@ class ManipulatorUR20: ManipulatorUR {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.2363,
                 mass: 16.343,
                 centerOfMass: [0, -0.0610, 0.0062],
@@ -241,7 +242,7 @@ class ManipulatorUR20: ManipulatorUR {
             ),
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.2010,
                 mass: 3.054,
                 centerOfMass: [0, -0.0026, 0.0393],
@@ -249,7 +250,7 @@ class ManipulatorUR20: ManipulatorUR {
             ),
             KinematicLinkDH(
                 a: 0.0,
-                alpha: -Double.pi / 2,
+                alpha: -Float.pi / 2,
                 d: 0.1593,
                 mass: 3.126,
                 centerOfMass: [0, 0.0024, 0.0379],
@@ -273,7 +274,7 @@ class ManipulatorUR30: ManipulatorUR {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.2363,
                 mass: 16.343,
                 centerOfMass: [-0.0001, -0.0600, 0.0069],
@@ -297,7 +298,7 @@ class ManipulatorUR30: ManipulatorUR {
             ),
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.2010,
                 mass: 3.054,
                 centerOfMass: [0, -0.0048, 0.0353],
@@ -305,7 +306,7 @@ class ManipulatorUR30: ManipulatorUR {
             ),
             KinematicLinkDH(
                 a: 0.0,
-                alpha: -Double.pi / 2,
+                alpha: -Float.pi / 2,
                 d: 0.1593,
                 mass: 3.126,
                 centerOfMass: [0, 0.0046, 0.0341],
@@ -327,11 +328,11 @@ class ManipulatorUR3e: ManipulatorUR {
     /// Initializes a new `ManipulatorUR30`.
     override public init() {
         super.init(links: [
-            KinematicLinkDH(a: 0.0, alpha: Double.pi / 2, d: 0.15185, mass: 1.98, centerOfMass: [0, -0.02, 0]),
+            KinematicLinkDH(a: 0.0, alpha: Float.pi / 2, d: 0.15185, mass: 1.98, centerOfMass: [0, -0.02, 0]),
             KinematicLinkDH(a: -0.24355, alpha: 0.0, d: 0.0, mass: 3.4445, centerOfMass: [0.13, 0, 0.1157]),
             KinematicLinkDH(a: -0.2132, alpha: 0.0, d: 0.0, mass: 1.437, centerOfMass: [0.05, 0, 0.0238]),
-            KinematicLinkDH(a: 0.0, alpha: Double.pi / 2, d: 0.13105, mass: 0.871, centerOfMass: [0, 0, 0.01]),
-            KinematicLinkDH(a: 0.0, alpha: -Double.pi / 2, d: 0.08535, mass: 0.805, centerOfMass: [0, 0, 0.01]),
+            KinematicLinkDH(a: 0.0, alpha: Float.pi / 2, d: 0.13105, mass: 0.871, centerOfMass: [0, 0, 0.01]),
+            KinematicLinkDH(a: 0.0, alpha: -Float.pi / 2, d: 0.08535, mass: 0.805, centerOfMass: [0, 0, 0.01]),
             KinematicLinkDH(a: 0.0, alpha: 0.0, d: 0.0921, mass: 0.261, centerOfMass: [0, 0, -0.02]),
         ])
     }
@@ -343,15 +344,15 @@ class ManipulatorUR5e: ManipulatorUR {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.1625,
                 mass: 3.761,
                 centerOfMass: [0, -0.02561, 0.00193]
             ),
             KinematicLinkDH(a: -0.425, alpha: 0.0, d: 0.0, mass: 8.058, centerOfMass: [0.2125, 0, 0.11336]),
             KinematicLinkDH(a: -0.3922, alpha: 0.0, d: 0.0, mass: 2.846, centerOfMass: [0.15, 0.0, 0.0265]),
-            KinematicLinkDH(a: 0.0, alpha: Double.pi / 2, d: 0.1333, mass: 1.37, centerOfMass: [0, -0.0018, 0.01634]),
-            KinematicLinkDH(a: 0.0, alpha: -Double.pi / 2, d: 0.0997, mass: 1.3, centerOfMass: [0, 0.0018, 0.01634]),
+            KinematicLinkDH(a: 0.0, alpha: Float.pi / 2, d: 0.1333, mass: 1.37, centerOfMass: [0, -0.0018, 0.01634]),
+            KinematicLinkDH(a: 0.0, alpha: -Float.pi / 2, d: 0.0997, mass: 1.3, centerOfMass: [0, 0.0018, 0.01634]),
             KinematicLinkDH(a: 0.0, alpha: 0.0, d: 0.0996, mass: 0.365, centerOfMass: [0, 0, -0.001159]),
         ])
     }
@@ -363,15 +364,15 @@ class ManipulatorUR7e: ManipulatorUR {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.1625,
                 mass: 3.761,
                 centerOfMass: [0, -0.02561, 0.00193]
             ),
             KinematicLinkDH(a: -0.425, alpha: 0.0, d: 0.0, mass: 8.058, centerOfMass: [0.2125, 0, 0.11336]),
             KinematicLinkDH(a: -0.3922, alpha: 0.0, d: 0.0, mass: 2.846, centerOfMass: [0.15, 0.0, 0.0265]),
-            KinematicLinkDH(a: 0.0, alpha: Double.pi / 2, d: 0.1333, mass: 1.37, centerOfMass: [0, -0.0018, 0.01634]),
-            KinematicLinkDH(a: 0.0, alpha: -Double.pi / 2, d: 0.0997, mass: 1.3, centerOfMass: [0, 0.0018, 0.01634]),
+            KinematicLinkDH(a: 0.0, alpha: Float.pi / 2, d: 0.1333, mass: 1.37, centerOfMass: [0, -0.0018, 0.01634]),
+            KinematicLinkDH(a: 0.0, alpha: -Float.pi / 2, d: 0.0997, mass: 1.3, centerOfMass: [0, 0.0018, 0.01634]),
             KinematicLinkDH(a: 0.0, alpha: 0.0, d: 0.0996, mass: 0.365, centerOfMass: [0, 0, -0.001159]),
         ])
     }
@@ -383,7 +384,7 @@ class ManipulatorUR16e: ManipulatorUR {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.1807,
                 mass: 7.369,
                 centerOfMass: [0.000, -0.016, 0.030]
@@ -392,14 +393,14 @@ class ManipulatorUR16e: ManipulatorUR {
             KinematicLinkDH(a: -0.36, alpha: 0.0, d: 0.0, mass: 4.321, centerOfMass: [0.194, 0.000, 0.065]),
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.17415,
                 mass: 2.180,
                 centerOfMass: [0.000, -0.009, 0.011]
             ),
             KinematicLinkDH(
                 a: 0.0,
-                alpha: -Double.pi / 2,
+                alpha: -Float.pi / 2,
                 d: 0.11985,
                 mass: 2.033,
                 centerOfMass: [0.000, 0.018, 0.012]
@@ -413,11 +414,11 @@ class ManipulatorUR3: ManipulatorUR {
     /// Initializes a new `ManipulatorUR3`.
     override public init() {
         super.init(links: [
-            KinematicLinkDH(a: 0.0, alpha: Double.pi / 2, d: 0.1519, mass: 2, centerOfMass: [0, -0.02, 0]),
+            KinematicLinkDH(a: 0.0, alpha: Float.pi / 2, d: 0.1519, mass: 2, centerOfMass: [0, -0.02, 0]),
             KinematicLinkDH(a: -0.24365, alpha: 0.0, d: 0.0, mass: 3.42, centerOfMass: [0.13, 0, 0.1157]),
             KinematicLinkDH(a: -0.21325, alpha: 0.0, d: 0.0, mass: 1.26, centerOfMass: [0.05, 0, 0.0238]),
-            KinematicLinkDH(a: 0.0, alpha: Double.pi / 2, d: 0.11235, mass: 0.8, centerOfMass: [0, 0, 0.01]),
-            KinematicLinkDH(a: 0.0, alpha: -Double.pi / 2, d: 0.08535, mass: 0.8, centerOfMass: [0, 0, 0.01]),
+            KinematicLinkDH(a: 0.0, alpha: Float.pi / 2, d: 0.11235, mass: 0.8, centerOfMass: [0, 0, 0.01]),
+            KinematicLinkDH(a: 0.0, alpha: -Float.pi / 2, d: 0.08535, mass: 0.8, centerOfMass: [0, 0, 0.01]),
             KinematicLinkDH(a: 0.0, alpha: 0.0, d: 0.0819, mass: 0.35, centerOfMass: [0, 0, -0.02]),
         ])
     }
@@ -432,7 +433,7 @@ class ManipulatorUR5: ManipulatorUR {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.089159,
                 mass: 3.7,
                 centerOfMass: [0, -0.02561, 0.00193]
@@ -441,14 +442,14 @@ class ManipulatorUR5: ManipulatorUR {
             KinematicLinkDH(a: -0.39225, alpha: 0.0, d: 0.0, mass: 2.33, centerOfMass: [0.15, 0.0, 0.0265]),
             KinematicLinkDH(
                 a: 0.0,
-                alpha: Double.pi / 2,
+                alpha: Float.pi / 2,
                 d: 0.10915,
                 mass: 1.219,
                 centerOfMass: [0, -0.0018, 0.01634]
             ),
             KinematicLinkDH(
                 a: 0.0,
-                alpha: -Double.pi / 2,
+                alpha: -Float.pi / 2,
                 d: 0.09465,
                 mass: 1.219,
                 centerOfMass: [0, 0.0018, 0.01634]

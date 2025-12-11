@@ -1,22 +1,23 @@
 import Testing
 import simd
+
 @testable import SwiftRobotics
 
 /// Truth table entry for IK testing
 /// Contains a target pose, posture type, expected joint angles, and optional tolerance
 struct IKTruthTableEntry: Sendable {
     let description: String
-    let pose: simd_double4x4
+    let pose: simd_float4x4
     let postureType: URRobotPostureType
-    let expectedJointAngles: [Double]
-    let tolerance: Double
+    let expectedJointAngles: [Float]
+    let tolerance: Float
 
     init(
         description: String,
-        pose: simd_double4x4,
+        pose: simd_float4x4,
         postureType: URRobotPostureType,
-        expectedJointAngles: [Double],
-        tolerance: Double = 1e-4
+        expectedJointAngles: [Float],
+        tolerance: Float = 1e-4
     ) {
         self.description = description
         self.pose = pose
@@ -34,34 +35,34 @@ let ur5eIKTruthTable: [IKTruthTableEntry] = [
     // Test case: Forward kinematics result for joint angles [0, -2.35619, 0.78539, 0, 1.570796, 1.570796]
     IKTruthTableEntry(
         description: "Home position - Sitting Position",
-        pose: simd_double4x4(
+        pose: simd_float4x4(
             // Column-major format: each SIMD4 is a COLUMN of the matrix
-            SIMD4<Double>(1.00000, 0.00000, 0.00000, 0.00000),  // Column 0 (X-axis)
-            SIMD4<Double>(0.00000, 1.00000, 0.00000, 0.00000),  // Column 1 (Y-axis)
-            SIMD4<Double>(0.00000, 0.00000, 1.00000, 0.00000),  // Column 2 (Z-axis)
-            SIMD4<Double>(0.20082, -0.13330, 0.95482, 1.00000)  // Column 3 (Translation)
+            SIMD4<Float>(1.00000, 0.00000, 0.00000, 0.00000),  // Column 0 (X-axis)
+            SIMD4<Float>(0.00000, 1.00000, 0.00000, 0.00000),  // Column 1 (Y-axis)
+            SIMD4<Float>(0.00000, 0.00000, 1.00000, 0.00000),  // Column 2 (Z-axis)
+            SIMD4<Float>(0.20082, -0.13330, 0.95482, 1.00000)  // Column 3 (Translation)
         ),
         postureType: .shoulderRightElbowUpWristUp,
         expectedJointAngles: [0.0, -2.35619, 0.78539, 0.0, 1.570796, 1.570796]
-    ),
+    )
     // IKTruthTableEntry(
     //     description: "Home position - all zeros",
-    //     pose: simd_double4x4(
-    //         SIMD4<Double>(1.00000, 0.00000, 0.00000, 0.00000),
-    //         SIMD4<Double>(0.00000, 0.00000, 1.00000, 0.00000),
-    //         SIMD4<Double>(0.00000, -1.00000, 0.00000, 0.00000),
-    //         SIMD4<Double>(-0.81720, -0.23290, 0.06280, 1.00000)
+    //     pose: simd_float4x4(
+    //         SIMD4<Float>(1.00000, 0.00000, 0.00000, 0.00000),
+    //         SIMD4<Float>(0.00000, 0.00000, 1.00000, 0.00000),
+    //         SIMD4<Float>(0.00000, -1.00000, 0.00000, 0.00000),
+    //         SIMD4<Float>(-0.81720, -0.23290, 0.06280, 1.00000)
     //     ),
     //     postureType: .shoulderLeftElbowUpWristDown,
     //     expectedJointAngles: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     // ),
     // IKTruthTableEntry(
     //     description: "All Joint Angles at 45 degrees",
-    //     pose: simd_double4x4(
-    //         SIMD4<Double>(-0.1069206, -0.4934452, 0.8631800, 0.00000),
-    //         SIMD4<Double>(0.9698923, 0.1392920, 0.1997665, 0.00000),
-    //         SIMD4<Double>(-0.2188080, 0.8585508, 0.4636955, 0.00000),
-    //         SIMD4<Double>(0.01662, -0.27149, -0.50952, 1.00000)
+    //     pose: simd_float4x4(
+    //         SIMD4<Float>(-0.1069206, -0.4934452, 0.8631800, 0.00000),
+    //         SIMD4<Float>(0.9698923, 0.1392920, 0.1997665, 0.00000),
+    //         SIMD4<Float>(-0.2188080, 0.8585508, 0.4636955, 0.00000),
+    //         SIMD4<Float>(0.01662, -0.27149, -0.50952, 1.00000)
     //     ),
     //     postureType: .shoulderLeftElbowUpWristDown,
     //     expectedJointAngles: [45.0, 45.0, 45.0, 45.0, 45.0, 45.0]
@@ -71,7 +72,7 @@ let ur5eIKTruthTable: [IKTruthTableEntry] = [
     // Example format:
     // IKTruthTableEntry(
     //     description: "Description of pose",
-    //     pose: simd_double4x4(...),
+    //     pose: simd_float4x4(...),
     //     postureType: .shoulderLeftElbowUpWristDown,
     //     expectedJointAngles: [j1, j2, j3, j4, j5, j6],
     //     tolerance: 1e-4  // Optional, defaults to 1e-4
@@ -82,9 +83,9 @@ let ur5eIKTruthTable: [IKTruthTableEntry] = [
 
 /// Helper to compare joint angles with tolerance
 func assertJointAnglesEqual(
-    _ computed: [Double],
-    _ expected: [Double],
-    tolerance: Double,
+    _ computed: [Float],
+    _ expected: [Float],
+    tolerance: Float,
     sourceLocation: SourceLocation = #_sourceLocation
 ) {
     #expect(computed.count == expected.count, "Joint angle count mismatch", sourceLocation: sourceLocation)
@@ -101,9 +102,13 @@ func assertJointAnglesEqual(
 
 /// Helper to create a pose from position and RPY angles
 func createPoseFromPositionAndRPY(
-    x: Double, y: Double, z: Double,
-    roll: Double, pitch: Double, yaw: Double
-) -> simd_double4x4 {
+    x: Float,
+    y: Float,
+    z: Float,
+    roll: Float,
+    pitch: Float,
+    yaw: Float
+) -> simd_float4x4 {
     // Create rotation matrix from roll-pitch-yaw
     let cr = cos(roll)
     let sr = sin(roll)
@@ -113,11 +118,11 @@ func createPoseFromPositionAndRPY(
     let sy = sin(yaw)
 
     // ZYX convention (yaw-pitch-roll) in column-major format
-    return simd_double4x4(
-        SIMD4<Double>(cy * cp, sy * cp, -sp, 0.0),                                    // Column 0 (X-axis)
-        SIMD4<Double>(cy * sp * sr - sy * cr, sy * sp * sr + cy * cr, cp * sr, 0.0),  // Column 1 (Y-axis)
-        SIMD4<Double>(cy * sp * cr + sy * sr, sy * sp * cr - cy * sr, cp * cr, 0.0),  // Column 2 (Z-axis)
-        SIMD4<Double>(x, y, z, 1.0)                                                    // Column 3 (Translation)
+    return simd_float4x4(
+        SIMD4<Float>(cy * cp, sy * cp, -sp, 0.0),  // Column 0 (X-axis)
+        SIMD4<Float>(cy * sp * sr - sy * cr, sy * sp * sr + cy * cr, cp * sr, 0.0),  // Column 1 (Y-axis)
+        SIMD4<Float>(cy * sp * cr + sy * sr, sy * sp * cr - cy * sr, cp * cr, 0.0),  // Column 2 (Z-axis)
+        SIMD4<Float>(x, y, z, 1.0)  // Column 3 (Translation)
     )
 }
 
@@ -171,7 +176,6 @@ struct UR5eInverseKinematicsTests {
     }
 }
 
-
 // MARK: - Cross-Robot Validation Tests
 
 @Suite("UR Cross-Robot IK Tests")
@@ -210,7 +214,7 @@ struct URCrossRobotTests {
             ManipulatorUR15(),
             ManipulatorUR16e(),
             ManipulatorUR20(),
-            ManipulatorUR30()
+            ManipulatorUR30(),
         ]
 
         for robot in robots {

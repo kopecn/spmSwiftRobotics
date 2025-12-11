@@ -1,10 +1,10 @@
 public class PostureSerialRobot {
     /// The posture of the robot, which includes the joint angles.
-    public var jointAngles: [Double]
+    public var jointAngles: [Float]
 
     /// Initializes a new RobotPosture with the given joint angles.
     /// - Parameter jointAngles: An array of joint angles representing the robot's posture.
-    public init(jointAngles: [Double]) {
+    public init(jointAngles: [Float]) {
         self.jointAngles = jointAngles
     }
 

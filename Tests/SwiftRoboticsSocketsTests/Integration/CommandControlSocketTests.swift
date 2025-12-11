@@ -1,9 +1,10 @@
-import Testing
 import Foundation
 import OpenCombine
-@testable import SwiftRoboticsSockets
 import SocketCommon
+import Testing
+
 @testable import SwiftRoboticAssets
+@testable import SwiftRoboticsSockets
 
 /// Test suite for Command/Control Socket (Port 50001)
 /// Tests command server and robot callback communication

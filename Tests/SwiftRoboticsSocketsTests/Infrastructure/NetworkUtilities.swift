@@ -1,4 +1,5 @@
 import Foundation
+
 #if canImport(Network)
 import Network
 #endif
@@ -42,7 +43,7 @@ public struct NetworkUtilities {
             if try await canConnect(to: host, port: port) {
                 return
             }
-            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+            try await Task.sleep(nanoseconds: 500_000_000)  // 0.5 seconds
         }
 
         throw NetworkError.timeout(port: port, timeout: timeout)
@@ -69,7 +70,9 @@ public struct NetworkUtilities {
 
         // Convert host to address
         if let hostent = gethostbyname(host) {
-            addr.sin_addr = hostent.pointee.h_addr_list[0]!.withMemoryRebound(to: in_addr.self, capacity: 1) { $0.pointee }
+            addr.sin_addr = hostent.pointee.h_addr_list[0]!.withMemoryRebound(to: in_addr.self, capacity: 1) {
+                $0.pointee
+            }
         } else {
             return false
         }
@@ -89,7 +92,7 @@ public struct NetworkUtilities {
         let error = errno
         if error == EINPROGRESS {
             // Wait a bit for connection to complete
-            try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            try await Task.sleep(nanoseconds: 100_000_000)  // 0.1 seconds
 
             var err: Int32 = 0
             var len = socklen_t(MemoryLayout<Int32>.size)

@@ -63,8 +63,7 @@ public enum URRobotPostureType: Int, Sendable {
     /// is Wrist Up?
     public var wristUp: Bool {
         switch self {
-        case 
-            .shoulderLeftElbowUpWristUp,
+        case .shoulderLeftElbowUpWristUp,
             .shoulderLeftElbowDownWristUp,
             .shoulderRightElbowDownWristUp,
             .shoulderRightElbowUpWristUp:

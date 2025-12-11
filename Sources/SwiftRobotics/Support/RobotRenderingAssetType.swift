@@ -7,7 +7,6 @@ public enum RobotRenderingAssetType {
 
     /// Planned Future Assets
     // case arrow
-    // case billboard
     // case camera
     // case capsule
     // case circle

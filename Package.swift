@@ -22,6 +22,7 @@ let package = Package(
     dependencies: [
         .package(url: "git@github.com:kopecn/spmFoundationTools.git", branch: "dev"),
         .package(url: "git@github.com:kopecn/spmSocketHandlers.git", branch: "dev"),
+        .package(url: "git@github.com:kopecn/spmMathTools.git", branch: "dev"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.0.0"),
         .package(url: "https://github.com/keyvariable/kvSIMD.swift.git", from: "1.1.0"),
         .package(url: "https://github.com/OpenCombine/OpenCombine", from: "0.14.0"),
@@ -34,6 +35,7 @@ let package = Package(
                 .product(name: "FoundationTools", package: "spmFoundationTools"),
                 .product(name: "FoundationCommon", package: "spmFoundationTools"),
                 .product(name: "FoundationTypes", package: "spmFoundationTools"),
+                .product(name: "spmMathTools", package: "spmMathTools"),
                 .product(name: "kvSIMD", package: "kvSIMD.swift"),
             ],
             path: "Sources/SwiftRobotics"

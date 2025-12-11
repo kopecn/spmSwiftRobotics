@@ -1,6 +1,6 @@
-import SwiftRoboticAssets
 import Foundation
 import Logging
+import SwiftRoboticAssets
 
 // MARK: - Waveform Management
 
@@ -18,10 +18,12 @@ extension URRobotStreamHandler {
         fromResource resourceName: String,
         posesPerBatch: Int = 5
     ) -> Bool {
-        guard let waveform = AssetLoader.loadJSON(
-            forResource: resourceName,
-            as: URStreamWaveform.self
-        ) else {
+        guard
+            let waveform = AssetLoader.loadJSON(
+                forResource: resourceName,
+                as: URStreamWaveform.self
+            )
+        else {
             logger.error("🔴 Failed to load waveform: \(resourceName)")
             currentlyLoadedWaveform = nil
             return false
@@ -124,10 +126,10 @@ extension URRobotStreamHandler {
     }
 
     /// Returns the current streaming progress (0.0 to 1.0)
-    public var streamingProgress: Double {
+    public var streamingProgress: Float {
         guard let streamer = currentlyLoadedWaveform else { return 0.0 }
         guard streamer.totalPoses > 0 else { return 0.0 }
-        return Double(streamer.index) / Double(streamer.totalPoses)
+        return Float(streamer.index) / Float(streamer.totalPoses)
     }
 
     /// Returns streaming statistics

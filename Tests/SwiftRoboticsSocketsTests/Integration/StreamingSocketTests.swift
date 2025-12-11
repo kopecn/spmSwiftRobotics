@@ -1,9 +1,10 @@
-import Testing
 import Foundation
 import OpenCombine
-@testable import SwiftRoboticsSockets
 import SocketCommon
+import Testing
+
 @testable import SwiftRoboticAssets
+@testable import SwiftRoboticsSockets
 
 /// Test suite for Streaming Socket (Port 50002)
 /// Tests waveform loading and streaming to robot
@@ -62,7 +63,9 @@ struct StreamingSocketTests {
         #expect(handler.hasMoreData, "Waveform should have data to stream")
 
         // Check streaming stats
-        guard let stats = handler.streamingStats else { throw TestError.assertionFailed(message: "No streaming stats available") }
+        guard let stats = handler.streamingStats else {
+            throw TestError.assertionFailed(message: "No streaming stats available")
+        }
         print("  Total poses: \(stats.total)")
         print("  Current index: \(stats.current)")
         print("  Remaining: \(stats.remaining)")
@@ -101,7 +104,8 @@ struct StreamingSocketTests {
 
         // Count values (should be 6 joints * posesPerBatch)
         let expectedValues = 6 * TestConfiguration.defaultPosesPerBatch
-        let components = batch
+        let components =
+            batch
             .trimmingCharacters(in: CharacterSet(charactersIn: "() "))
             .components(separatedBy: ",")
             .map { $0.trimmingCharacters(in: CharacterSet.whitespaces) }
@@ -110,12 +114,14 @@ struct StreamingSocketTests {
         print("  Expected values: \(expectedValues)")
         print("  Actual values: \(components.count)")
 
-        #expect(components.count == expectedValues,
-                "Batch should contain \(expectedValues) values")
+        #expect(
+            components.count == expectedValues,
+            "Batch should contain \(expectedValues) values"
+        )
 
         // Verify all values are numbers
         for component in components {
-            #expect(Double(component) != nil, "All values should be valid numbers")
+            #expect(Float(component) != nil, "All values should be valid numbers")
         }
 
         print("✓ Batch format validation complete")
@@ -182,7 +188,8 @@ struct StreamingSocketTests {
         streamHandler.toggleConnection()
 
         try await TestHelpers.waitForResponse(timeout: TestConfiguration.connectionTimeout) {
-            commandHandler.connectionState == SocketServerListeningState.listening && streamHandler.connectionState == SocketServerListeningState.listening
+            commandHandler.connectionState == SocketServerListeningState.listening
+                && streamHandler.connectionState == SocketServerListeningState.listening
         }
 
         print("✓ Command and streaming servers listening")
@@ -264,16 +271,17 @@ struct StreamingSocketTests {
 
         // Step 8: Monitor streaming progress
         print("\n  Monitoring streaming progress...")
-        var lastProgress = 0.0
-        var progressChecks = 0
+        var lastProgress: Float = 0.0
+        var progressChecks: Float = 0
 
         while streamHandler.hasMoreData && progressChecks < 30 {
             let currentProgress = streamHandler.streamingProgress
 
             if currentProgress != lastProgress, let stats = streamHandler.streamingStats {
-                print("    Progress: \(String(format: "%.1f%%", currentProgress * 100)) - " +
-                      "Batch \(stats.current)/\(stats.total) - " +
-                      "Remaining: \(stats.remaining)")
+                print(
+                    "    Progress: \(String(format: "%.1f%%", currentProgress * 100)) - "
+                        + "Batch \(stats.current)/\(stats.total) - " + "Remaining: \(stats.remaining)"
+                )
                 lastProgress = currentProgress
             }
 
@@ -333,7 +341,9 @@ struct StreamingSocketTests {
         print("  Progress: \(handler.streamingProgress)")
 
         // Get current stats
-        guard let statsBeforeReset = handler.streamingStats else { throw TestError.assertionFailed(message: "No streaming stats available") }
+        guard let statsBeforeReset = handler.streamingStats else {
+            throw TestError.assertionFailed(message: "No streaming stats available")
+        }
         print("  Stats before reset: current=\(statsBeforeReset.current), remaining=\(statsBeforeReset.remaining)")
 
         // Reset (reload waveform)
@@ -345,7 +355,9 @@ struct StreamingSocketTests {
         print("✓ Waveform reset")
 
         // Verify reset
-        guard let statsAfterReset = handler.streamingStats else { throw TestError.assertionFailed(message: "No streaming stats available") }
+        guard let statsAfterReset = handler.streamingStats else {
+            throw TestError.assertionFailed(message: "No streaming stats available")
+        }
         print("  Stats after reset: current=\(statsAfterReset.current), remaining=\(statsAfterReset.remaining)")
 
         #expect(statsAfterReset.current == 0, "Current should be reset to 0")
@@ -370,7 +382,9 @@ struct StreamingSocketTests {
             posesPerBatch: 5
         )
 
-        guard let stats1 = handler.streamingStats else { throw TestError.assertionFailed(message: "No streaming stats available") }
+        guard let stats1 = handler.streamingStats else {
+            throw TestError.assertionFailed(message: "No streaming stats available")
+        }
         print("✓ First waveform loaded: \(stats1.total) poses")
 
         // Load with different batch size
@@ -379,7 +393,9 @@ struct StreamingSocketTests {
             posesPerBatch: 10
         )
 
-        guard let stats2 = handler.streamingStats else { throw TestError.assertionFailed(message: "No streaming stats available") }
+        guard let stats2 = handler.streamingStats else {
+            throw TestError.assertionFailed(message: "No streaming stats available")
+        }
         print("✓ Second waveform loaded (different batch): \(stats2.total) poses")
 
         #expect(stats1.total == stats2.total, "Total poses should be same")

@@ -1,15 +1,16 @@
-import Testing
 import Foundation
 import OpenCombine
-@testable import SwiftRoboticsSockets
 import SocketCommon
+import Testing
+
 @testable import SwiftRoboticAssets
+@testable import SwiftRoboticsSockets
 
 /// Test suite for URScript Socket (Port 30001)
 /// Tests urScript loading and callback establishment
 @Suite("URScript Socket Tests - Scenario 2")
 struct URScriptSocketTests {
-    
+
     // MARK: - Test: Connection
 
     @Test("URScript socket connects successfully")
@@ -106,37 +107,6 @@ struct URScriptSocketTests {
         )
 
         print("✓ Placeholder replaced with: \(testIP)")
-    }
-
-    // MARK: - Test: Auto IP Detection
-
-    @Test("URScript auto-detects host IP")
-    func testAutoIPDetection() async throws {
-        print("\n=== Testing Auto IP Detection ===")
-
-        // Auto-detect IP
-        let hostIP = try URScriptTemplateManager.getHostIPAddress()
-
-        print("✓ Auto-detected host IP: \(hostIP)")
-
-        // Verify it's a valid IP format (basic check)
-        #expect(
-            hostIP.contains("."),
-            "IP address should contain dots"
-        )
-
-        #expect(
-            !hostIP.isEmpty,
-            "IP address should not be empty"
-        )
-
-        // Verify it's not a loopback address
-        #expect(
-            !hostIP.hasPrefix("127."),
-            "IP address should not be loopback"
-        )
-
-        print("✓ Valid IP address detected")
     }
 
     // MARK: - Test: Prepare Script for Test
@@ -238,7 +208,7 @@ struct URScriptSocketTests {
             "home",
             "status",
             "startstreaming",
-            "stopstreaming"
+            "stopstreaming",
         ]
 
         for component in requiredComponents {

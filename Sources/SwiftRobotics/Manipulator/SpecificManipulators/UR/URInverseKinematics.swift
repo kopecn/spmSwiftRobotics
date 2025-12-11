@@ -78,16 +78,16 @@ public struct URInverseKinematics {
     // MARK: - Robot Parameters (DH Convention)
 
     /// Link offset d₆ (distance along z₆ axis)
-    let d6: Double
+    let d6: Float
 
     /// Precomputed vector for P₀⁵ calculation: [0, 0, -d6, 1]
-    let d6Vect: simd_double4
+    let d6Vect: simd_float4
 
     /// Link offset d₄ (distance along z₄ axis)
-    let d4: Double
+    let d4: Float
 
     /// Precomputed vector for P₁³ calculation: [0, -d4, 0, 1]
-    let d4Vect: simd_double4
+    let d4Vect: simd_float4
 
     /// Link 1 DH parameters (base to shoulder)
     let l1: KinematicLinkDH
@@ -105,52 +105,52 @@ public struct URInverseKinematics {
     let l6: KinematicLinkDH
 
     /// Link length a₂ (distance along x₂ axis)
-    let a2: Double
+    let a2: Float
 
     /// Link length a₃ (distance along x₃ axis)
-    let a3: Double
+    let a3: Float
 
     /// Homogeneous coordinate adjustment vector [0, 0, 0, 1]
-    let vectAdj = simd_double4(0, 0, 0, 1)
+    let vectAdj = simd_float4(0, 0, 0, 1)
 
     // MARK: - Intermediate Calculation State
     // These properties store intermediate results to avoid repeated allocations
     // during high-frequency IK computations (1-4 kHz cycle times)
 
     /// Vector from frame 0 to frame 5 origin (P₀⁵), used for θ₁ calculation
-    var vector0to5: SIMD4<Double> = SIMD4(0, 0, 0, 0)
+    var vector0to5: SIMD4<Float> = SIMD4(0, 0, 0, 0)
 
     /// Angle ψ = atan2(P₀⁵_y, P₀⁵_x) for θ₁ calculation
-    var psi: Double = 0
+    var psi: Float = 0
 
     /// Angle φ = ±arccos(d4 / |P₀⁵|ₓᵧ) for θ₁ calculation
-    var phi: Double = 0
+    var phi: Float = 0
 
     /// Transformation from frame 6 to frame 1 (T₆¹ = T₁⁶⁻¹)
-    var transform6to1: simd_double4x4 = matrix_identity_double4x4
+    var transform6to1: simd_float4x4 = matrix_identity_float4x4
 
     /// Transformation from frame 1 to frame 6 (T₁⁶)
-    var transform1to6: simd_double4x4 = matrix_identity_double4x4
+    var transform1to6: simd_float4x4 = matrix_identity_float4x4
 
     /// Transformation from frame 1 to frame 4 (T₁⁴)
-    var transform1to4: simd_double4x4 = matrix_identity_double4x4
+    var transform1to4: simd_float4x4 = matrix_identity_float4x4
 
     /// Vector from frame 1 to frame 3 origin (P₁³), used for θ₂ and θ₃ calculation
-    var vector1to3: SIMD4<Double> = SIMD4(0, 0, 0, 0)
+    var vector1to3: SIMD4<Float> = SIMD4(0, 0, 0, 0)
 
     /// Z-component of P₁⁶, used for θ₅ calculation
-    var vector1to6z: Double = 0
+    var vector1to6z: Float = 0
 
     /// sin(θ₅), cached to avoid recomputation in θ₆ calculation
-    var sinTheta5: Double = 0
+    var sinTheta5: Float = 0
 
     /// Computed joint angles (radians)
-    var theta1: Double = 0
-    var theta2: Double = 0
-    var theta3: Double = 0
-    var theta4: Double = 0
-    var theta5: Double = 0
-    var theta6: Double = 0
+    var theta1: Float = 0
+    var theta2: Float = 0
+    var theta3: Float = 0
+    var theta4: Float = 0
+    var theta5: Float = 0
+    var theta6: Float = 0
 
     // MARK: - Initialization
 
@@ -185,8 +185,8 @@ public struct URInverseKinematics {
         d6 = link6.d
 
         // Precompute constant vectors for vector operations
-        d6Vect = simd_double4(0, 0, -link6.d, 1)
-        d4Vect = simd_double4(0, -link4.d, 0, 1)
+        d6Vect = simd_float4(0, 0, -link6.d, 1)
+        d4Vect = simd_float4(0, -link4.d, 0, 1)
     }
 
     // MARK: - Private Helper Methods: Joint Angle Calculations
@@ -200,7 +200,7 @@ public struct URInverseKinematics {
     ///         rounding errors, which would cause acos() to return NaN. This helper ensures
     ///         numerical robustness.
     @inline(__always)
-    private func clampAcos(_ value: Double) -> Double {
+    private func clampAcos(_ value: Float) -> Float {
         acos(max(-1.0, min(1.0, value)))
     }
 
@@ -213,7 +213,7 @@ public struct URInverseKinematics {
     /// - Note: NaN indicates the robot is in a singular configuration where the
     ///         wrist center lies on the base z-axis.
     @inline(__always)
-    private var getPsi: Double {
+    private var getPsi: Float {
         /// ψ= atan2 (P05 )y,(P05 )x
         atan2(vector0to5[1], vector0to5[0])
     }
@@ -227,9 +227,9 @@ public struct URInverseKinematics {
     /// - Note: The "donut hole" is a cylindrical unreachable region near the base z-axis
     ///         where d4 > |P₀⁵|ₓᵧ. This forms part of the robot's workspace boundary.
     @inline(__always)
-    private var getPhi: Double {
+    private var getPhi: Float {
         clampAcos(
-            d4 / sqrt( vector0to5[0] * vector0to5[0] + vector0to5[1] * vector0to5[1])
+            d4 / sqrt(vector0to5[0] * vector0to5[0] + vector0to5[1] * vector0to5[1])
         )
     }
 
@@ -243,9 +243,9 @@ public struct URInverseKinematics {
     /// - Returns: Z-component of wrist center in frame 1 coordinates
     @inline(__always)
     private func vector1to6z(
-        pose: simd_double4x4,
-        theta1: Double
-    ) -> Double {
+        pose: simd_float4x4,
+        theta1: Float
+    ) -> Float {
         pose[3][0] * sin(theta1) - pose[3][1] * cos(theta1)
     }
 
@@ -260,11 +260,11 @@ public struct URInverseKinematics {
     @inline(__always)
     private func getTheta1(
         whichPose: URRobotPostureType
-    ) -> Double {
+    ) -> Float {
         if whichPose.shoulderLeft {
-            return psi + phi + Double.pi / 2
+            return psi + phi + Float.pi / 2
         } else {
-            return psi - phi + Double.pi / 2
+            return psi - phi + Float.pi / 2
         }
     }
 
@@ -276,8 +276,8 @@ public struct URInverseKinematics {
     /// - Returns: Joint angle θ₂ in radians
     @inline(__always)
     private func getTheta2(
-        theta3: Double
-    ) -> Double {
+        theta3: Float
+    ) -> Float {
         -atan2(
             self.vector1to3[1],
             -self.vector1to3[0]
@@ -295,7 +295,7 @@ public struct URInverseKinematics {
     /// - Parameter whichPose: Robot configuration specifying elbow orientation
     /// - Returns: Joint angle θ₃ in radians, or NaN if pose is unreachable
     @inline(__always)
-    private func getTheta3(whichPose: URRobotPostureType) -> Double {
+    private func getTheta3(whichPose: URRobotPostureType) -> Float {
         let cosValue = (simd_length_squared(self.vector1to3) - a2 * a2 - a3 * a3) / (2 * a2 * a3)
 
         if whichPose.elbowUp {
@@ -313,8 +313,8 @@ public struct URInverseKinematics {
     /// - Returns: Joint angle θ₄ in radians
     @inline(__always)
     private func getTheta4(
-        transform3to4: simd_double4x4
-    ) -> Double {
+        transform3to4: simd_float4x4
+    ) -> Float {
         atan2(transform3to4[1, 0], transform3to4[0, 0])
     }
 
@@ -332,7 +332,7 @@ public struct URInverseKinematics {
     @inline(__always)
     private func getTheta5(
         whichPose: URRobotPostureType
-    ) -> Double {
+    ) -> Float {
         let cosValue = (self.vector1to6z - self.d4) / self.d6
 
         if whichPose.wristUp {
@@ -353,11 +353,11 @@ public struct URInverseKinematics {
     /// - Note: Returns NaN when |sin(θ₅)| < 1e-6 (wrist singularity), where θ₆ becomes
     ///         undefined due to infinite solutions in the wrist plane.
     @inline(__always)
-    private func getTheta6(transform1to6: simd_double4x4) -> Double {
+    private func getTheta6(transform1to6: simd_float4x4) -> Float {
         // Check for wrist singularity (when sin(θ₅) ≈ 0)
-        let epsilon = 1e-6
+        let epsilon: Float = 1e-6
         if abs(self.sinTheta5) < epsilon {
-            return Double.nan
+            return Float.nan
         }
 
         return atan2(-transform1to6[1, 2] / self.sinTheta5, transform1to6[0, 2] / self.sinTheta5)
@@ -374,8 +374,8 @@ public struct URInverseKinematics {
     /// - Returns: Vector P₀⁵ as a 4D homogeneous coordinate (w=0 for direction vector)
     @inline(__always)
     private func vector0to5(
-        pose: simd_double4x4
-    ) -> SIMD4<Double> {
+        pose: simd_float4x4
+    ) -> SIMD4<Float> {
         pose * d6Vect - vectAdj
     }
 
@@ -490,7 +490,8 @@ public struct URInverseKinematics {
         )
 
         self.theta4 = getTheta4(
-            transform3to4: (l2.getPose(theta: self.theta2) * l3.getPose(theta: self.theta3)).inverse
+            transform3to4: (
+                l2.getPose(theta: self.theta2) * l3.getPose(theta: self.theta3)).inverse
                 * self.transform1to4
         )
 

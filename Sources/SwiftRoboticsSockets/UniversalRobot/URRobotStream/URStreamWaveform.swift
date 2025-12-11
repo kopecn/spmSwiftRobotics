@@ -21,32 +21,32 @@ public struct URStreamWaveform: Codable {
     public let metadata: Metadata
 
     /// Joint 1 positions (base rotation) - typically in degrees
-    public let j1: [Double]
+    public let j1: [Float]
 
     /// Joint 2 positions (shoulder) - typically in degrees
-    public let j2: [Double]
+    public let j2: [Float]
 
     /// Joint 3 positions (elbow) - typically in degrees
-    public let j3: [Double]
+    public let j3: [Float]
 
     /// Joint 4 positions (wrist 1) - typically in degrees
-    public let j4: [Double]
+    public let j4: [Float]
 
     /// Joint 5 positions (wrist 2) - typically in degrees
-    public let j5: [Double]
+    public let j5: [Float]
 
     /// Joint 6 positions (wrist 3) - typically in degrees
-    public let j6: [Double]
+    public let j6: [Float]
 
     /// The number of samples in this waveform (based on the longest joint array)
     public var sampleCount: Int {
-        return max(j1.count, j2.count, j3.count, j4.count, j5.count, j6.count)
+        max(j1.count, j2.count, j3.count, j4.count, j5.count, j6.count)
     }
 
     /// Returns all 6 joint positions for a given sample index
     /// - Parameter index: The sample index (0..<sampleCount)
     /// - Returns: Array of 6 joint positions [j1, j2, j3, j4, j5, j6] in degrees
-    public func joints(at index: Int) -> [Double] {
+    public func joints(at index: Int) -> [Float] {
         guard index >= 0 && index < sampleCount else {
             return [0, 0, 0, 0, 0, 0]
         }
@@ -57,15 +57,15 @@ public struct URStreamWaveform: Codable {
             j3[safe: index] ?? j3.last ?? 0.0,
             j4[safe: index] ?? j4.last ?? 0.0,
             j5[safe: index] ?? j5.last ?? 0.0,
-            j6[safe: index] ?? j6.last ?? 0.0
+            j6[safe: index] ?? j6.last ?? 0.0,
         ]
     }
 
     /// Returns all 6 joint positions for a given sample index, converted to radians
     /// - Parameter index: The sample index (0..<sampleCount)
     /// - Returns: Array of 6 joint positions [j1, j2, j3, j4, j5, j6] in radians
-    public func jointsInRadians(at index: Int) -> [Double] {
-        return joints(at: index).map { $0 * .pi / 180.0 }
+    public func jointsInRadians(at index: Int) -> [Float] {
+        joints(at: index).map { $0 * .pi / 180.0 }
     }
 
     // MARK: - Streaming Support
@@ -74,7 +74,7 @@ public struct URStreamWaveform: Codable {
     /// - Parameter posesPerBatch: Number of poses to return per batch (default: 5, which yields 30 floats)
     /// - Returns: A WaveformStreamer that can dequeue batches of poses
     public func makeStreamer(posesPerBatch: Int = 5) -> WaveformStreamer {
-        return WaveformStreamer(waveform: self, posesPerBatch: posesPerBatch)
+        WaveformStreamer(waveform: self, posesPerBatch: posesPerBatch)
     }
 }
 
@@ -111,11 +111,11 @@ public class WaveformStreamer {
     /// Dequeues the next batch of poses and returns them as a flat array of floats in radians
     /// - Parameter count: Number of poses to dequeue (defaults to posesPerBatch)
     /// - Returns: Flat array of joint positions [pose0_j0...pose0_j5, pose1_j0...pose1_j5, ...] in radians, or nil if no more data
-    public func dequeueRadians(count: Int? = nil) -> [Double]? {
+    public func dequeueRadians(count: Int? = nil) -> [Float]? {
         let batchSize = count ?? posesPerBatch
         guard currentIndex < waveform.sampleCount else { return nil }
 
-        var floats: [Double] = []
+        var floats: [Float] = []
         floats.reserveCapacity(batchSize * 6)
 
         let endIndex = min(currentIndex + batchSize, waveform.sampleCount)
@@ -131,11 +131,11 @@ public class WaveformStreamer {
     /// Dequeues the next batch of poses and returns them as a flat array of floats in degrees
     /// - Parameter count: Number of poses to dequeue (defaults to posesPerBatch)
     /// - Returns: Flat array of joint positions [pose0_j0...pose0_j5, pose1_j0...pose1_j5, ...] in degrees, or nil if no more data
-    public func dequeueDegrees(count: Int? = nil) -> [Double]? {
+    public func dequeueDegrees(count: Int? = nil) -> [Float]? {
         let batchSize = count ?? posesPerBatch
         guard currentIndex < waveform.sampleCount else { return nil }
 
-        var floats: [Double] = []
+        var floats: [Float] = []
         floats.reserveCapacity(batchSize * 6)
 
         let endIndex = min(currentIndex + batchSize, waveform.sampleCount)
@@ -163,7 +163,7 @@ public class WaveformStreamer {
     /// Peeks at the next batch without advancing the index
     /// - Parameter count: Number of poses to peek (defaults to posesPerBatch)
     /// - Returns: Flat array of joint positions in radians, or nil if no more data
-    public func peekRadians(count: Int? = nil) -> [Double]? {
+    public func peekRadians(count: Int? = nil) -> [Float]? {
         let savedIndex = currentIndex
         let result = dequeueRadians(count: count)
         currentIndex = savedIndex
@@ -173,8 +173,8 @@ public class WaveformStreamer {
 
 // MARK: - Safe Array Subscript Extension
 
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        return indices.contains(index) ? self[index] : nil
+extension Array {
+    fileprivate subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }

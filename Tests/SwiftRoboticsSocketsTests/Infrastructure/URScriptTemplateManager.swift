@@ -1,4 +1,5 @@
 import Foundation
+
 @testable import SwiftRoboticAssets
 
 /// Manages URScript templates with dynamic host IP replacement for testing
@@ -34,7 +35,7 @@ public struct URScriptTemplateManager {
     ///   - ip: The IP address to insert
     /// - Returns: The script with IP address replaced
     public static func replaceHostIP(in script: String, with ip: String) -> String {
-        return script.replacingOccurrences(of: hostIPPlaceholder, with: ip)
+        script.replacingOccurrences(of: hostIPPlaceholder, with: ip)
     }
 
     // MARK: - Convenience Methods
@@ -61,7 +62,7 @@ public struct URScriptTemplateManager {
     /// - Parameter script: The script to validate
     /// - Returns: True if script is ready (no placeholder), false otherwise
     public static func isScriptPrepared(_ script: String) -> Bool {
-        return !script.contains(hostIPPlaceholder)
+        !script.contains(hostIPPlaceholder)
     }
 }
 
@@ -77,7 +78,8 @@ public enum URScriptError: Error, CustomStringConvertible {
         case .templateNotFound:
             return "URScript template could not be loaded from assets"
         case .placeholderNotFound:
-            return "URScript template does not contain the expected placeholder: \(URScriptTemplateManager.hostIPPlaceholder)"
+            return
+                "URScript template does not contain the expected placeholder: \(URScriptTemplateManager.hostIPPlaceholder)"
         case .invalidIPAddress:
             return "Invalid IP address provided for replacement"
         }

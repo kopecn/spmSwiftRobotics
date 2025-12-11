@@ -1,6 +1,5 @@
 import Logging
 
-
 public func setupLogging() {
     LoggingSystem.bootstrap { label in
         var handler = StreamLogHandler.standardOutput(label: label)

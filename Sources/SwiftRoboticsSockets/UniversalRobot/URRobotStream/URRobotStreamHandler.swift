@@ -1,10 +1,10 @@
-import SwiftRoboticAssets
 import Foundation
 import Logging
 import NIOHandler
 import OpenCombine
 import OpenCombineDispatch
 import SocketCommon
+import SwiftRoboticAssets
 
 /// Handles Universal Robot stream server socket connections and message handling.
 ///

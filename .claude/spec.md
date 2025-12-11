@@ -130,8 +130,6 @@ The library uses standard DH parameters for kinematic chains:
 - `theta`: Joint angle (rotation around z-axis in radians)
 
 ### Transform Representation
-- Homogeneous transforms: `simd_double4x4`
-- Custom extensions in `Extensions/simd_double4x4.swift`
 - DH transform construction available via SIMD extensions
 
 ## Key Features

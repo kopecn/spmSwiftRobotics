@@ -1,5 +1,7 @@
 import Foundation
+import FoundationTypes
 import simd
+import spmMathTools
 
 /// A kinematic link using Denavit-Hartenberg parameters
 public class KinematicLinkDH: KinematicLinkProtocol {
@@ -12,30 +14,30 @@ public class KinematicLinkDH: KinematicLinkProtocol {
     // MARK: - Properties
 
     /// Link length (distance along x axis)
-    public let a: Double
+    public let a: Float
     /// Link twist (angle in radians around x axis)
-    public let alpha: Double
+    public let alpha: Float
     /// sine of the link twist (angle in radians around x axis)
-    public let sa: Double
+    public let sa: Float
     /// cosine of the link twist (angle in radians around x axis)
-    public let ca: Double
+    public let ca: Float
     /// Link offset (distance along z axis)
-    public let d: Double
+    public let d: Float
     /// Mass
-    public var mass: Double?
+    public var mass: Float?
     /// Center of mass
-    public var centerOfMass: [Double]?
+    public var centerOfMass: [Float]?
     /// Inertia matrix
-    public var inertiaMatrix: [Double]?
+    public var inertiaMatrix: [Float]?
 
     public init(
         id: UUID = UUID(),
-        a: Double,
-        alpha: Double,
-        d: Double,
-        mass: Double? = nil,
-        centerOfMass: [Double]? = nil,
-        inertiaMatrix: [Double]? = nil,
+        a: Float,
+        alpha: Float,
+        d: Float,
+        mass: Float? = nil,
+        centerOfMass: [Float]? = nil,
+        inertiaMatrix: [Float]? = nil,
         renderingAsset: RobotRenderingAssetType? = nil
     ) {
         self.id = id
@@ -50,7 +52,7 @@ public class KinematicLinkDH: KinematicLinkProtocol {
         self.renderingAsset = renderingAsset
     }
 
-    public func getPose(theta: Double) -> simd_double4x4 {
-        simd_double4x4(denavitHartenberg: a, ca: ca, sa: sa, d: d, theta: theta)
+    public func getPose(theta: Float) -> simd_float4x4 {
+        simd_float4x4(denavitHartenberg: a, ca: ca, sa: sa, d: d, theta: theta)
     }
 }

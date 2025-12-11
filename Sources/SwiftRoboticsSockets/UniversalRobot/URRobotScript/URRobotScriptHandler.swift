@@ -1,10 +1,10 @@
-import SwiftRoboticAssets
 import Foundation
 import Logging
 import NIOHandler
 import OpenCombine
 import OpenCombineDispatch
 import SocketCommon
+import SwiftRoboticAssets
 
 /// Handles Universal Robot URScript client socket connections and message handling.
 ///

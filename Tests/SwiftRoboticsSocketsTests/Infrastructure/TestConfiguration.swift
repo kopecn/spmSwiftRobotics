@@ -16,7 +16,7 @@ public struct TestConfiguration {
     /// Docker provides special hostnames for this purpose.
     public static var hostCallbackIP: String {
         // Default to Docker Desktop's host gateway (macOS/Windows - no firewall prompts!)
-        return "host.docker.internal"
+        "host.docker.internal"
 
         // For Docker on Linux, use Docker bridge IP:
         // return "172.17.0.1"
@@ -74,24 +74,26 @@ public struct TestConfiguration {
 
     /// Prints the current test configuration
     public static func printConfiguration() {
-        print("""
+        print(
+            """
 
-        Test Configuration:
-        ------------------
-        Host Callback IP:  \(hostCallbackIP)
-        Robot IP:          \(robotIP)
-        Dashboard Port:    \(dashboardPort)
-        URScript Port:     \(urScriptPort)
-        Command Port:      \(commandPort)
-        Streaming Port:    \(streamingPort)
+            Test Configuration:
+            ------------------
+            Host Callback IP:  \(hostCallbackIP)
+            Robot IP:          \(robotIP)
+            Dashboard Port:    \(dashboardPort)
+            URScript Port:     \(urScriptPort)
+            Command Port:      \(commandPort)
+            Streaming Port:    \(streamingPort)
 
-        Timeouts:
-        ---------
-        Connection:        \(connectionTimeout)s
-        Command:           \(commandTimeout)s
-        Streaming:         \(streamingTimeout)s
-        Movement:          \(movementTimeout)s
+            Timeouts:
+            ---------
+            Connection:        \(connectionTimeout)s
+            Command:           \(commandTimeout)s
+            Streaming:         \(streamingTimeout)s
+            Movement:          \(movementTimeout)s
 
-        """)
+            """
+        )
     }
 }

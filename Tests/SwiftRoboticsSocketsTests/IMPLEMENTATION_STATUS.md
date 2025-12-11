@@ -212,7 +212,7 @@ Based on code review:
 - Property: `connectionState: SocketServerListeningState`
 - Property: `currentlyLoadedWaveform: WaveformStreamer?`
 - Property: `hasMoreData: Bool`
-- Property: `streamingProgress: Double`
+- Property: `streamingProgress: Float`
 - Method: `toggleConnection()`
 - Method: `loadWaveformWithError(fromResource:posesPerBatch:)`
 - Method: `dequeueNextBatch() -> String?`

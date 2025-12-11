@@ -1,7 +1,8 @@
-import Testing
 import Foundation
 import OpenCombine
 import SocketCommon
+import Testing
+
 @testable import SwiftRoboticsSockets
 
 /// Test suite for Dashboard Socket (Port 29999)
@@ -86,9 +87,8 @@ struct DashboardSocketTests {
         // Response should contain "Robotmode" or similar
         // URSim typically responds with: "Robotmode: NO_CONTROLLER" or "Robotmode: RUNNING"
         #expect(
-            handler.lastDashResponse.contains("Robotmode") ||
-            handler.lastDashResponse.contains("NO_CONTROLLER") ||
-            handler.lastDashResponse.contains("RUNNING"),
+            handler.lastDashResponse.contains("Robotmode") || handler.lastDashResponse.contains("NO_CONTROLLER")
+                || handler.lastDashResponse.contains("RUNNING"),
             "Response should contain robot mode information"
         )
 
@@ -141,9 +141,8 @@ struct DashboardSocketTests {
 
         // Response typically: "Powering on" or similar
         #expect(
-            handler.lastDashResponse.contains("Powering") ||
-            handler.lastDashResponse.contains("power") ||
-            handler.lastDashResponse.contains("Power"),
+            handler.lastDashResponse.contains("Powering") || handler.lastDashResponse.contains("power")
+                || handler.lastDashResponse.contains("Power"),
             "Response should acknowledge power command"
         )
 
@@ -274,9 +273,8 @@ struct DashboardSocketTests {
         // Command 1: Robot Mode
         handler.robotMode()
         try await TestHelpers.waitForResponse(timeout: TestConfiguration.commandTimeout) {
-            handler.lastDashResponse.contains("Robotmode") ||
-            handler.lastDashResponse.contains("NO_CONTROLLER") ||
-            handler.lastDashResponse.contains("RUNNING")
+            handler.lastDashResponse.contains("Robotmode") || handler.lastDashResponse.contains("NO_CONTROLLER")
+                || handler.lastDashResponse.contains("RUNNING")
         }
         let response1 = handler.lastDashResponse
         print("  Command 1 Response: \(response1)")
@@ -351,8 +349,13 @@ struct DashboardSocketTests {
         // Verify state transitions
         #expect(stateTransitions.count >= 2, "Should have multiple state transitions")
         #expect(stateTransitions.first == .disconnected, "Should start disconnected")
-        #expect(stateTransitions.contains { if case .connected = $0 { return true }; return false },
-                "Should transition to connected")
+        #expect(
+            stateTransitions.contains {
+                if case .connected = $0 { return true }
+                return false
+            },
+            "Should transition to connected"
+        )
 
         cancellable?.cancel()
         print("✓ State transitions test complete")

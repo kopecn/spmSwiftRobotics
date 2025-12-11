@@ -1,7 +1,8 @@
 import Foundation
-import Testing
 import OpenCombine
 import SocketCommon
+import Testing
+
 @testable import SwiftRoboticsSockets
 
 /// Test helper utilities for async operations and assertions
@@ -24,7 +25,7 @@ public struct TestHelpers {
             if case .connected = handler.connectionState {
                 return
             }
-            try await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+            try await Task.sleep(nanoseconds: 100_000_000)  // 0.1s
         }
 
         throw TestError.timeout(operation: "dashboard connection", timeout: timeout)
@@ -41,7 +42,7 @@ public struct TestHelpers {
             if case .connected = handler.connectionState {
                 return
             }
-            try await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+            try await Task.sleep(nanoseconds: 100_000_000)  // 0.1s
         }
 
         throw TestError.timeout(operation: "urscript connection", timeout: timeout)
@@ -64,7 +65,7 @@ public struct TestHelpers {
             if case .activeConnections = handler.connectionState {
                 return
             }
-            try await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+            try await Task.sleep(nanoseconds: 100_000_000)  // 0.1s
         }
 
         throw TestError.timeout(operation: "command server active", timeout: timeout)
@@ -82,7 +83,7 @@ public struct TestHelpers {
             if case .activeConnections = handler.connectionState {
                 return
             }
-            try await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+            try await Task.sleep(nanoseconds: 100_000_000)  // 0.1s
         }
 
         throw TestError.timeout(operation: "streaming server active", timeout: timeout)
@@ -105,7 +106,7 @@ public struct TestHelpers {
             if condition() {
                 return
             }
-            try await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+            try await Task.sleep(nanoseconds: 100_000_000)  // 0.1s
         }
 
         throw TestError.timeout(operation: "response", timeout: timeout)
@@ -128,7 +129,7 @@ public struct TestHelpers {
             if handler.hasMoreData {
                 return
             }
-            try await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+            try await Task.sleep(nanoseconds: 100_000_000)  // 0.1s
         }
 
         throw TestError.timeout(operation: "streaming activation", timeout: timeout)
@@ -149,7 +150,7 @@ public struct TestHelpers {
             if !handler.hasMoreData && handler.streamingProgress >= 1.0 {
                 return
             }
-            try await Task.sleep(nanoseconds: 100_000_000) // 0.1s
+            try await Task.sleep(nanoseconds: 100_000_000)  // 0.1s
         }
 
         throw TestError.timeout(operation: "streaming completion", timeout: timeout)

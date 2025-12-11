@@ -1,13 +1,13 @@
-import SwiftRoboticAssets
 import Foundation
 import Logging
 import NIOHandler
 import OpenCombine
 import OpenCombineDispatch
 import SocketCommon
+import SwiftRoboticAssets
 
 /// Handles Universal Robot dashboard client socket connections and message handling.
-/// 
+///
 /// - Provides observable connection state for UI integration.
 /// - Manages client lifecycle: connect, disconnect, error handling.
 /// - Integrates with NIOSocketHandlerClient and URRobotDashboardMessageHandling.
