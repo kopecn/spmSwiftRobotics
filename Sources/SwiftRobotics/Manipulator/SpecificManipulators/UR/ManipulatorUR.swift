@@ -1,12 +1,12 @@
-class ManipulatorUR: ManipulatorSerial {
-    var inverseKinematics: URInverseKinematics?
 
-    override public init() {
-        super.init()
+class ManipulatorUR: ManipulatorSerial {
+    var inverseKinematics: URInverseKinematics
+
+    override public init?() {
+        return nil
     }
 
-    override init(links: [any KinematicLinkProtocol]) {
-        super.init(links: links)
+    override init?(links: [any KinematicLinkProtocol]) {
 
         // Initialize IK calculator if we have 6 DH links
         guard links.count == 6,
@@ -17,7 +17,7 @@ class ManipulatorUR: ManipulatorSerial {
             let link5 = links[4] as? KinematicLinkDH,
             let link6 = links[5] as? KinematicLinkDH
         else {
-            return
+            return nil 
         }
 
         self.inverseKinematics = URInverseKinematics(
@@ -28,12 +28,13 @@ class ManipulatorUR: ManipulatorSerial {
             link5: link5,
             link6: link6
         )
+        super.init(links: links)
     }
 }
 
 class ManipulatorUR10e: ManipulatorUR {
     /// Initializes a new `ManipulatorUR10e`.
-    override public init() {
+    override public init?() {
         super.init(links: [
             KinematicLinkDH(
 
@@ -90,7 +91,7 @@ class ManipulatorUR10e: ManipulatorUR {
 
 class ManipulatorUR12e: ManipulatorUR {
     /// Initializes a new `ManipulatorUR12e`.
-    override public init() {
+    override public init?() {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
@@ -146,7 +147,7 @@ class ManipulatorUR12e: ManipulatorUR {
 
 class ManipulatorUR15: ManipulatorUR {
     /// Initializes a new `ManipulatorUR15e`.
-    override public init() {
+    override public init?() {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
@@ -214,7 +215,7 @@ class ManipulatorUR15: ManipulatorUR {
 
 class ManipulatorUR20: ManipulatorUR {
     /// Initializes a new `ManipulatorUR20e`.
-    override public init() {
+    override public init?() {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
@@ -270,7 +271,7 @@ class ManipulatorUR20: ManipulatorUR {
 
 class ManipulatorUR30: ManipulatorUR {
     /// Initializes a new `ManipulatorUR30`.
-    override public init() {
+    override public init?() {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
@@ -326,7 +327,7 @@ class ManipulatorUR30: ManipulatorUR {
 
 class ManipulatorUR3e: ManipulatorUR {
     /// Initializes a new `ManipulatorUR30`.
-    override public init() {
+    override public init?() {
         super.init(links: [
             KinematicLinkDH(a: 0.0, alpha: Float.pi / 2, d: 0.15185, mass: 1.98, centerOfMass: [0, -0.02, 0]),
             KinematicLinkDH(a: -0.24355, alpha: 0.0, d: 0.0, mass: 3.4445, centerOfMass: [0.13, 0, 0.1157]),
@@ -340,7 +341,7 @@ class ManipulatorUR3e: ManipulatorUR {
 
 class ManipulatorUR5e: ManipulatorUR {
     /// Initializes a new `ManipulatorUR5e`.
-    override public init() {
+    override public init?() {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
@@ -360,7 +361,7 @@ class ManipulatorUR5e: ManipulatorUR {
 
 class ManipulatorUR7e: ManipulatorUR {
     /// Initializes a new `ManipulatorUR7e`.
-    override public init() {
+    override public init?() {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
@@ -380,7 +381,7 @@ class ManipulatorUR7e: ManipulatorUR {
 
 class ManipulatorUR16e: ManipulatorUR {
     /// Initializes a new `ManipulatorUR16e`.
-    override public init() {
+    override public init?() {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,
@@ -412,7 +413,7 @@ class ManipulatorUR16e: ManipulatorUR {
 
 class ManipulatorUR3: ManipulatorUR {
     /// Initializes a new `ManipulatorUR3`.
-    override public init() {
+    override public init?() {
         super.init(links: [
             KinematicLinkDH(a: 0.0, alpha: Float.pi / 2, d: 0.1519, mass: 2, centerOfMass: [0, -0.02, 0]),
             KinematicLinkDH(a: -0.24365, alpha: 0.0, d: 0.0, mass: 3.42, centerOfMass: [0.13, 0, 0.1157]),
@@ -429,7 +430,7 @@ class ManipulatorUR3: ManipulatorUR {
 /// kinematic links and parameters.
 class ManipulatorUR5: ManipulatorUR {
     /// Initializes a new `ManipulatorUR5`.
-    override public init() {
+    override public init?() {
         super.init(links: [
             KinematicLinkDH(
                 a: 0.0,

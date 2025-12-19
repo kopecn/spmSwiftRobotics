@@ -4,12 +4,12 @@ import simd
 import spmMathTools
 
 /// A kinematic link using Denavit-Hartenberg parameters
-public class KinematicLinkDH: KinematicLinkProtocol {
+public struct KinematicLinkDH: KinematicLinkProtocol {
     // MARK: - Protocol Properties
 
-    public var id: UUID
-    public var type: KinematicLinkType = .devHart
-    public var renderingAsset: RobotRenderingAssetType?
+    public let id: UUID
+    public let type: KinematicLinkType
+    public let renderingAsset: RobotRenderingAssetType?
 
     // MARK: - Properties
 
@@ -24,11 +24,11 @@ public class KinematicLinkDH: KinematicLinkProtocol {
     /// Link offset (distance along z axis)
     public let d: Float
     /// Mass
-    public var mass: Float?
+    public let mass: Float?
     /// Center of mass
-    public var centerOfMass: [Float]?
+    public let centerOfMass: [Float]?
     /// Inertia matrix
-    public var inertiaMatrix: [Float]?
+    public let inertiaMatrix: [Float]?
 
     public init(
         id: UUID = UUID(),
@@ -41,10 +41,11 @@ public class KinematicLinkDH: KinematicLinkProtocol {
         renderingAsset: RobotRenderingAssetType? = nil
     ) {
         self.id = id
+        self.type = .devHart
         self.a = a
         self.alpha = alpha
-        sa = sin(alpha)
-        ca = cos(alpha)
+        self.sa = sin(alpha)
+        self.ca = cos(alpha)
         self.d = d
         self.mass = mass
         self.centerOfMass = centerOfMass
@@ -52,7 +53,7 @@ public class KinematicLinkDH: KinematicLinkProtocol {
         self.renderingAsset = renderingAsset
     }
 
-    public func getPose(theta: Float) -> simd_float4x4 {
-        simd_float4x4(denavitHartenberg: a, ca: ca, sa: sa, d: d, theta: theta)
+    public func getPose(theta: Float) -> SpatialPose<Float> {
+        SpatialPose<Float>(denavitHartenberg: a, ca: ca, sa: sa, d: d, theta: theta)
     }
 }

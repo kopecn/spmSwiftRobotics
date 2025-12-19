@@ -1,5 +1,7 @@
 import Foundation
-import simd
+
+import FoundationTypes
+import spmMathTools
 
 /// Analytical inverse kinematics solver for Universal Robots manipulators (UR3/5/10/e series).
 ///
@@ -73,7 +75,7 @@ import simd
 /// - Universal Robots Technical Specifications and DH Parameters
 ///
 /// - SeeAlso: `URRobotPostureType`, `ManipulatorUR`, `PoseRobot`
-public struct URInverseKinematics {
+public struct URInverseKinematics: Sendable {
 
     // MARK: - Robot Parameters (DH Convention)
 
@@ -81,13 +83,13 @@ public struct URInverseKinematics {
     let d6: Float
 
     /// Precomputed vector for P₀⁵ calculation: [0, 0, -d6, 1]
-    let d6Vect: simd_float4
+    let d6Vect: Position<Float>
 
     /// Link offset d₄ (distance along z₄ axis)
     let d4: Float
 
     /// Precomputed vector for P₁³ calculation: [0, -d4, 0, 1]
-    let d4Vect: simd_float4
+    let d4Vect: Position<Float>
 
     /// Link 1 DH parameters (base to shoulder)
     let l1: KinematicLinkDH
@@ -110,15 +112,12 @@ public struct URInverseKinematics {
     /// Link length a₃ (distance along x₃ axis)
     let a3: Float
 
-    /// Homogeneous coordinate adjustment vector [0, 0, 0, 1]
-    let vectAdj = simd_float4(0, 0, 0, 1)
-
     // MARK: - Intermediate Calculation State
     // These properties store intermediate results to avoid repeated allocations
     // during high-frequency IK computations (1-4 kHz cycle times)
 
     /// Vector from frame 0 to frame 5 origin (P₀⁵), used for θ₁ calculation
-    var vector0to5: SIMD4<Float> = SIMD4(0, 0, 0, 0)
+    var vector0to5: Position<Float> = Position<Float>(x:0, y: 0, z: 0)
 
     /// Angle ψ = atan2(P₀⁵_y, P₀⁵_x) for θ₁ calculation
     var psi: Float = 0
@@ -127,16 +126,16 @@ public struct URInverseKinematics {
     var phi: Float = 0
 
     /// Transformation from frame 6 to frame 1 (T₆¹ = T₁⁶⁻¹)
-    var transform6to1: simd_float4x4 = matrix_identity_float4x4
+    var transform6to1: PoseRobot = PoseRobot.identity
 
     /// Transformation from frame 1 to frame 6 (T₁⁶)
-    var transform1to6: simd_float4x4 = matrix_identity_float4x4
+    var transform1to6: PoseRobot = PoseRobot.identity
 
     /// Transformation from frame 1 to frame 4 (T₁⁴)
-    var transform1to4: simd_float4x4 = matrix_identity_float4x4
+    var transform1to4: PoseRobot = PoseRobot.identity
 
     /// Vector from frame 1 to frame 3 origin (P₁³), used for θ₂ and θ₃ calculation
-    var vector1to3: SIMD4<Float> = SIMD4(0, 0, 0, 0)
+    var vector1to3: Position<Float> = Position<Float>(x:0, y: 0, z: 0)
 
     /// Z-component of P₁⁶, used for θ₅ calculation
     var vector1to6z: Float = 0
@@ -185,8 +184,9 @@ public struct URInverseKinematics {
         d6 = link6.d
 
         // Precompute constant vectors for vector operations
-        d6Vect = simd_float4(0, 0, -link6.d, 1)
-        d4Vect = simd_float4(0, -link4.d, 0, 1)
+        
+        d6Vect = Position<Float>(x:0, y: 0, z: -link6.d)
+        d4Vect = Position<Float>(x:0, y: -link4.d, z: 0)
     }
 
     // MARK: - Private Helper Methods: Joint Angle Calculations
@@ -215,7 +215,7 @@ public struct URInverseKinematics {
     @inline(__always)
     private var getPsi: Float {
         /// ψ= atan2 (P05 )y,(P05 )x
-        atan2(vector0to5[1], vector0to5[0])
+        atan2(vector0to5.y, vector0to5.x)
     }
 
     /// Computes angle φ for θ₁ calculation (Equation 5 from Keating paper).
@@ -229,7 +229,7 @@ public struct URInverseKinematics {
     @inline(__always)
     private var getPhi: Float {
         clampAcos(
-            d4 / sqrt(vector0to5[0] * vector0to5[0] + vector0to5[1] * vector0to5[1])
+            d4 / sqrt(vector0to5.x * vector0to5.x + vector0to5.y * vector0to5.y)
         )
     }
 
@@ -243,10 +243,10 @@ public struct URInverseKinematics {
     /// - Returns: Z-component of wrist center in frame 1 coordinates
     @inline(__always)
     private func vector1to6z(
-        pose: simd_float4x4,
+        pose: PoseRobot,
         theta1: Float
     ) -> Float {
-        pose[3][0] * sin(theta1) - pose[3][1] * cos(theta1)
+        pose.z * sin(theta1) - pose.y * cos(theta1)
     }
 
     /// Computes shoulder rotation angle θ₁ (Equation 4-5 from Keating paper).
@@ -279,11 +279,11 @@ public struct URInverseKinematics {
         theta3: Float
     ) -> Float {
         -atan2(
-            self.vector1to3[1],
-            -self.vector1to3[0]
+            self.vector1to3.y,
+            -self.vector1to3.x
         )
             + asin(
-                (self.a3 * sin(self.theta3)) / simd_length(self.vector1to3)
+                (self.a3 * sin(self.theta3)) / self.vector1to3.magnitude
             )
     }
 
@@ -296,7 +296,7 @@ public struct URInverseKinematics {
     /// - Returns: Joint angle θ₃ in radians, or NaN if pose is unreachable
     @inline(__always)
     private func getTheta3(whichPose: URRobotPostureType) -> Float {
-        let cosValue = (simd_length_squared(self.vector1to3) - a2 * a2 - a3 * a3) / (2 * a2 * a3)
+        let cosValue = (self.vector1to3.magnitudeSquared - a2 * a2 - a3 * a3) / (2 * a2 * a3)
 
         if whichPose.elbowUp {
             return clampAcos(cosValue)
@@ -313,9 +313,10 @@ public struct URInverseKinematics {
     /// - Returns: Joint angle θ₄ in radians
     @inline(__always)
     private func getTheta4(
-        transform3to4: simd_float4x4
+        transform3to4: PoseRobot
     ) -> Float {
-        atan2(transform3to4[1, 0], transform3to4[0, 0])
+        
+        atan2(transform3to4.quaternion.xy, transform3to4.quaternion.xx)
     }
 
     /// Computes wrist yaw angle θ₅ (Equation 6 from Keating paper).
@@ -353,14 +354,14 @@ public struct URInverseKinematics {
     /// - Note: Returns NaN when |sin(θ₅)| < 1e-6 (wrist singularity), where θ₆ becomes
     ///         undefined due to infinite solutions in the wrist plane.
     @inline(__always)
-    private func getTheta6(transform1to6: simd_float4x4) -> Float {
+    private func getTheta6(transform1to6: PoseRobot) -> Float {
         // Check for wrist singularity (when sin(θ₅) ≈ 0)
         let epsilon: Float = 1e-6
         if abs(self.sinTheta5) < epsilon {
             return Float.nan
         }
 
-        return atan2(-transform1to6[1, 2] / self.sinTheta5, transform1to6[0, 2] / self.sinTheta5)
+        return atan2(-transform1to6.quaternion.zy / self.sinTheta5, transform1to6.quaternion.zx / self.sinTheta5)
     }
 
     // MARK: - Private Helper Methods: Vector Computations
@@ -373,10 +374,8 @@ public struct URInverseKinematics {
     /// - Parameter pose: Target end-effector transformation T₀⁶
     /// - Returns: Vector P₀⁵ as a 4D homogeneous coordinate (w=0 for direction vector)
     @inline(__always)
-    private func vector0to5(
-        pose: simd_float4x4
-    ) -> SIMD4<Float> {
-        pose * d6Vect - vectAdj
+    private func vector0to5(pose: PoseRobot) -> Position<Float> {
+        pose * d6Vect
     }
 
     // MARK: - Public API
@@ -439,7 +438,7 @@ public struct URInverseKinematics {
         jointWrap: (Int, Int, Int, Int, Int, Int, Int, Int)
     ) -> PostureSerialRobot? {
 
-        self.vector0to5 = vector0to5(pose: pose.pose)
+        self.vector0to5 = vector0to5(pose: pose)
 
         self.psi = self.getPsi
         self.phi = self.getPhi
@@ -452,7 +451,7 @@ public struct URInverseKinematics {
         /// being either "left" or "right,".
         self.theta1 = getTheta1(whichPose: whichPose)
 
-        self.vector1to6z = vector1to6z(pose: pose.pose, theta1: theta1)
+        self.vector1to6z = vector1to6z(pose: pose, theta1: theta1)
 
         /// there are two solutions.
         /// These solutions correspond to the wrist being "down" and "up."
@@ -465,7 +464,7 @@ public struct URInverseKinematics {
         self.sinTheta5 = sin(self.theta5)
 
         // Compute T_16 (transform from frame 1 to frame 6) for theta6 calculation
-        self.transform1to6 = l1.getPose(theta: theta1).inverse * pose.pose
+        self.transform1to6 = l1.getPose(theta: theta1).inverse * pose
         self.theta6 = getTheta6(transform1to6: transform1to6)
 
         // Check for wrist singularity
@@ -475,7 +474,7 @@ public struct URInverseKinematics {
 
         self.transform1to4 = self.transform1to6 * (l5.getPose(theta: theta5) * l6.getPose(theta: self.theta6)).inverse
 
-        self.vector1to3 = self.transform1to4 * d4Vect - vectAdj
+        self.vector1to3 = self.transform1to4 * d4Vect
 
         /// there are two solutions for θ2 and θ3.
         /// These solutions are known as “elbow up” and “elbow down.”
@@ -491,8 +490,7 @@ public struct URInverseKinematics {
 
         self.theta4 = getTheta4(
             transform3to4: (
-                l2.getPose(theta: self.theta2) * l3.getPose(theta: self.theta3)).inverse
-                * self.transform1to4
+                l2.getPose(theta: self.theta2) * l3.getPose(theta: self.theta3)).inverse * self.transform1to4
         )
 
         return PostureSerialRobot(

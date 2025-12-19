@@ -1,6 +1,6 @@
 import Foundation
 
-public enum KinematicLinkType {
+public enum KinematicLinkType: Sendable {
     case base
     case rigid
     case devHart

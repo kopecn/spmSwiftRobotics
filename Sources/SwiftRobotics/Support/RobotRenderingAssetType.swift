@@ -1,6 +1,6 @@
 import Foundation
 
-public enum RobotRenderingAssetType {
+public enum RobotRenderingAssetType: Sendable {
     case uriAsset(assetlocation: URL)
     case daeAsset
     case usdzAsset

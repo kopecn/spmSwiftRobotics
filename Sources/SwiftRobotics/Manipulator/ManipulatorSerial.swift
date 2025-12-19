@@ -2,11 +2,11 @@ class ManipulatorSerial: ManipulatorProtocol {
     var links: [any KinematicLinkProtocol]
 
     /// Initializes a new `ManipulatorSerial` with an empty array of links.
-    public init() {
+    public init?() {
         links = []
     }
 
-    public init(links: [any KinematicLinkProtocol]) {
+    public init?(links: [any KinematicLinkProtocol]) {
         self.links = links
     }
 }

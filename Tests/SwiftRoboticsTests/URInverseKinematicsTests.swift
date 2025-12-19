@@ -134,13 +134,13 @@ struct UR5eInverseKinematicsTests {
     @Test("UR5e IK - Truth Table Validation", arguments: ur5eIKTruthTable)
     func testUR5eIKWithTruthTable(entry: IKTruthTableEntry) async throws {
         // Create UR5e robot
-        let robot = ManipulatorUR5e()
-
-        // Ensure IK calculator is initialized
-        guard var ikCalculator = robot.inverseKinematics else {
-            Issue.record("UR5e inverse kinematics calculator not initialized")
+        guard let robot = ManipulatorUR5e() else {
+            Issue.record("UR5e Type not initialized")
             return
         }
+
+        // Ensure IK calculator is initialized
+        var ikCalculator = robot.inverseKinematics
 
         // Create pose from truth table
         let pose = PoseRobot(from4x4: entry.pose)
@@ -169,9 +169,11 @@ struct UR5eInverseKinematicsTests {
 
     @Test("UR5e IK - Basic sanity check")
     func testUR5eIKBasicSanity() async throws {
-        let robot = ManipulatorUR5e()
+        guard let robot = ManipulatorUR5e() else {
+            Issue.record("UR5e Type not initialized")
+            return
+        }
 
-        #expect(robot.inverseKinematics != nil, "IK calculator should be initialized")
         #expect(robot.links.count == 6, "UR5e should have 6 links")
     }
 }
@@ -183,9 +185,8 @@ struct URCrossRobotTests {
 
     @Test("Forward-Inverse Kinematics Consistency - UR5e")
     func testUR5eForwardInverseConsistency() async throws {
-        let robot = ManipulatorUR5e()
-        guard robot.inverseKinematics != nil else {
-            Issue.record("IK calculator not initialized")
+        guard let robot = ManipulatorUR5e() else {
+            Issue.record("UR5e Type not initialized")
             return
         }
 
@@ -203,7 +204,7 @@ struct URCrossRobotTests {
 
     @Test("All UR robots have IK initialized")
     func testAllURRobotsHaveIK() async throws {
-        let robots: [ManipulatorUR] = [
+        let robots: [ManipulatorUR?] = [
             ManipulatorUR3(),
             ManipulatorUR3e(),
             ManipulatorUR5(),
@@ -219,7 +220,7 @@ struct URCrossRobotTests {
 
         for robot in robots {
             #expect(
-                robot.inverseKinematics != nil,
+                robot?.inverseKinematics != nil,
                 "\(type(of: robot)) should have IK calculator initialized"
             )
         }
