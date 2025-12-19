@@ -7,7 +7,7 @@ import Testing
 
 /// Test suite for Dashboard Socket (Port 29999)
 /// Tests connection and dashboard commands
-@Suite("Dashboard Socket Tests - Scenario 1")
+@Suite("Dashboard Socket Tests - Scenario 1", .serialized, .disabled(if: URSimulatorAvailability.skipCondition))
 struct DashboardSocketTests {
 
     // MARK: - Test: Connection

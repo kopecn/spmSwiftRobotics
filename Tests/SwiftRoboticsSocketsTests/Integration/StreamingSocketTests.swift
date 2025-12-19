@@ -8,7 +8,7 @@ import Testing
 
 /// Test suite for Streaming Socket (Port 50002)
 /// Tests waveform loading and streaming to robot
-@Suite("Streaming Socket Tests - Scenario 4")
+@Suite("Streaming Socket Tests - Scenario 4", .serialized)
 struct StreamingSocketTests {
 
     // MARK: - Test: Server Startup
@@ -175,7 +175,7 @@ struct StreamingSocketTests {
 
     // MARK: - Test: Complete Streaming Flow
 
-    @Test("Complete streaming flow with robot callback")
+    @Test("Complete streaming flow with robot callback", .disabled(if: URSimulatorAvailability.skipCondition))
     func testCompleteStreamingFlow() async throws {
         print("\n=== Testing Complete Streaming Flow ===")
         print("This test requires URScript callback and command connection")

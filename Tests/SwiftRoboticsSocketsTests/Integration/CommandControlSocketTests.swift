@@ -8,7 +8,7 @@ import Testing
 
 /// Test suite for Command/Control Socket (Port 50001)
 /// Tests command server and robot callback communication
-@Suite("Command/Control Socket Tests - Scenario 3")
+@Suite("Command/Control Socket Tests - Scenario 3", .serialized)
 struct CommandControlSocketTests {
 
     // MARK: - Test: Server Startup
@@ -42,7 +42,7 @@ struct CommandControlSocketTests {
 
     // MARK: - Test: Complete Callback Flow
 
-    @Test("Complete flow: URScript → Command callback → Commands")
+    @Test("Complete flow: URScript → Command callback → Commands", .disabled(if: URSimulatorAvailability.skipCondition))
     func testCompleteCommandFlow() async throws {
         print("\n=== Testing Complete Command/Control Flow ===")
         print("This test requires URScript to be loaded and callback established")
@@ -145,7 +145,7 @@ struct CommandControlSocketTests {
 
     // MARK: - Test: Init Command
 
-    @Test("initRobot command sends and receives ack")
+    @Test("initRobot command sends and receives ack", .disabled(if: URSimulatorAvailability.skipCondition))
     func testInitRobotCommand() async throws {
         print("\n=== Testing initRobot Command ===")
         print("NOTE: This test requires active robot connection via URScript callback")
@@ -187,7 +187,7 @@ struct CommandControlSocketTests {
 
     // MARK: - Test: Home Command
 
-    @Test("home command executes successfully")
+    @Test("home command executes successfully", .disabled(if: URSimulatorAvailability.skipCondition))
     func testHomeCommand() async throws {
         print("\n=== Testing home Command ===")
         print("NOTE: This test requires active robot connection via URScript callback")
@@ -226,7 +226,7 @@ struct CommandControlSocketTests {
 
     // MARK: - Test: Status Command
 
-    @Test("status command returns robot status")
+    @Test("status command returns robot status", .disabled(if: URSimulatorAvailability.skipCondition))
     func testStatusCommand() async throws {
         print("\n=== Testing status Command ===")
         print("NOTE: This test requires active robot connection via URScript callback")
@@ -264,7 +264,7 @@ struct CommandControlSocketTests {
 
     // MARK: - Test: Version Command
 
-    @Test("ver command returns version info")
+    @Test("ver command returns version info", .disabled(if: URSimulatorAvailability.skipCondition))
     func testVersionCommand() async throws {
         print("\n=== Testing ver Command ===")
         print("NOTE: This test requires active robot connection via URScript callback")
@@ -302,7 +302,7 @@ struct CommandControlSocketTests {
 
     // MARK: - Test: Current Pose Command
 
-    @Test("currentpose command returns robot pose")
+    @Test("currentpose command returns robot pose", .disabled(if: URSimulatorAvailability.skipCondition))
     func testCurrentPoseCommand() async throws {
         print("\n=== Testing currentpose Command ===")
         print("NOTE: This test requires active robot connection via URScript callback")
@@ -340,7 +340,7 @@ struct CommandControlSocketTests {
 
     // MARK: - Test: Sequential Commands
 
-    @Test("Sequential commands execute in order")
+    @Test("Sequential commands execute in order", .disabled(if: URSimulatorAvailability.skipCondition))
     func testSequentialCommands() async throws {
         print("\n=== Testing Sequential Commands ===")
         print("NOTE: This test requires active robot connection via URScript callback")

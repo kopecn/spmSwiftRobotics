@@ -1,4 +1,4 @@
-.PHONY: help clean build run test format lint install uninstall release tag version checkGitClean mermaid bump-patch bump-minor bump-major update-packages
+.PHONY: help clean build run test test-ur format lint install uninstall release tag version checkGitClean mermaid bump-patch bump-minor bump-major update-packages
 
 .DEFAULT_GOAL := help
 
@@ -21,8 +21,11 @@ build:  ## Build the project in release mode
 run:  ## Run the app
 	swift run
 
-test:  ## Run tests
+test:  ## Run tests (without simulator)
 	swift test
+
+test-ur:  ## Run tests with UR simulator enabled
+	ENABLE_SIMULATOR_TESTS=1 swift test
 
 update-packages: ## 
 	swift package update

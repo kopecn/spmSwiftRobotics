@@ -15,6 +15,10 @@ let package = Package(
             targets: ["SwiftRobotics"]
         ),
         .library(
+            name: "SwiftRoboticAssets",
+            targets: ["SwiftRoboticAssets"]
+        ),
+        .library(
             name: "SwiftRoboticsSockets",
             targets: ["SwiftRoboticsSockets"]
         ),

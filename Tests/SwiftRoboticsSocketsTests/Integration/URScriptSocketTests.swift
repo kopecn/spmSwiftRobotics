@@ -8,12 +8,12 @@ import Testing
 
 /// Test suite for URScript Socket (Port 30001)
 /// Tests urScript loading and callback establishment
-@Suite("URScript Socket Tests - Scenario 2")
+@Suite("URScript Socket Tests - Scenario 2", .serialized)
 struct URScriptSocketTests {
 
     // MARK: - Test: Connection
 
-    @Test("URScript socket connects successfully")
+    @Test("URScript socket connects successfully", .disabled(if: URSimulatorAvailability.skipCondition))
     func testURScriptConnection() async throws {
         print("\n=== Testing URScript Connection ===")
         print("Connecting to \(TestConfiguration.robotIP):\(TestConfiguration.urScriptPort)")
@@ -138,7 +138,7 @@ struct URScriptSocketTests {
 
     // MARK: - Test: Load and Send URScript
 
-    @Test("URScript loads and sends to robot")
+    @Test("URScript loads and sends to robot", .disabled(if: URSimulatorAvailability.skipCondition))
     func testLoadAndSendURScript() async throws {
         print("\n=== Testing Load and Send URScript ===")
 
@@ -224,7 +224,7 @@ struct URScriptSocketTests {
 
     // MARK: - Test: Multiple Script Sends
 
-    @Test("URScript can be sent multiple times")
+    @Test("URScript can be sent multiple times", .disabled(if: URSimulatorAvailability.skipCondition))
     func testMultipleScriptSends() async throws {
         print("\n=== Testing Multiple Script Sends ===")
 
