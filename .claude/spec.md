@@ -27,12 +27,6 @@ The main library providing robotics functionality:
   - `RobotRenderingAssetType`: Asset management for 3D rendering
   - SIMD extensions for homogeneous transforms
 
-#### SwiftRoboticVisualizer (Executable)
-A cross-platform visualizer for robot manipulators using SwiftCrossUI.
-- **macOS**: Uses AppKit backend (native)
-- **Linux/Jetson**: Uses GTK-4 backend
-- Designed to run on embedded systems with minimal resource overhead
-
 #### SwiftRoboticAssets (Target)
 Asset management for robot visualization resources.
 
@@ -118,7 +112,6 @@ Sources/
 │   │   └── SpecificManipulators/  # Vendor-specific implementations
 │   ├── Support/             # Utilities and asset types
 │   └── Extensions/          # Standard library extensions
-├── SwiftRoboticVisualizer/  # Visualization app
 └── SwiftRoboticAssets/      # 3D assets and resources
 ```
 
@@ -179,23 +172,6 @@ swift test --filter SwiftRoboticsTests
 swift test --parallel
 ```
 
-### Running Visualizer
-
-#### macOS
-```bash
-swift run SwiftRoboticVisualizer
-```
-
-#### Linux / Jetson
-```bash
-# Ensure DISPLAY is set for GUI
-export DISPLAY=:0
-swift run SwiftRoboticVisualizer
-
-# For headless testing (if implementing headless mode)
-swift run SwiftRoboticVisualizer --headless
-```
-
 ### Cross-Compilation Considerations
 
 When developing on macOS for Linux/Jetson deployment:
@@ -251,35 +227,6 @@ To add a new robot manipulator:
 
 ## Deployment
 
-### Jetson Deployment
-
-#### Preparing the Executable
-```bash
-# Build release binary on Jetson or cross-compile
-swift build -c release
-
-# Binary location
-.build/release/SwiftRoboticVisualizer
-```
-
-#### Installing Swift on Jetson
-```bash
-# Download Swift for ARM64
-wget https://download.swift.org/swift-6.1-release/ubuntu2004-aarch64/swift-6.1-RELEASE/swift-6.1-RELEASE-ubuntu20.04-aarch64.tar.gz
-
-# Extract and install
-tar xzf swift-6.1-RELEASE-ubuntu20.04-aarch64.tar.gz
-sudo mv swift-6.1-RELEASE-ubuntu20.04-aarch64 /opt/swift
-echo 'export PATH=/opt/swift/usr/bin:$PATH' >> ~/.bashrc
-source ~/.bashrc
-```
-
-#### Performance Optimization for Embedded Systems
-- Use release builds (`-c release`) for production
-- Consider `-Xswiftc -O` for additional optimizations
-- Profile memory usage on resource-constrained Jetson devices
-- Implement lazy loading for 3D assets
-- Use SIMD optimizations (kvSIMD is architecture-aware)
 
 ### Package Configuration
 
@@ -297,7 +244,6 @@ platforms: [
 
 - **Add new kinematic link type**: Conform to `KinematicLinkProtocol`
 - **Add new manipulator**: Conform to `ManipulatorProtocol`
-- **Extend visualizer**: Modify `SwiftRoboticVisualizer/macOS/ContentView.swift` (ensure changes work on Linux/GTK backend)
 - **Add 3D assets**: Place in `SwiftRoboticAssets` target
 - **Test cross-platform**: Verify on both macOS and Linux before committing
 - **Performance profiling**: Test on target Jetson hardware for real-world performance
