@@ -140,19 +140,137 @@ handler.deviceStatePublisher
     .store(in: &cancellables)
 ```
 
-## Implementing the Delegate
+## Events
+
+The handler supports both **solicited** and **unsolicited** events from devices.
+
+### Event Types
+
+| Type | Description | Routing |
+|------|-------------|---------|
+| **Solicited** | Associated with a transaction | Transaction's `eventPublisher` |
+| **Unsolicited** | General device notifications | Handler's `unsolicitedEventPublisher` |
+
+### Event Codes
+
+Events carry a user-assignable `code` for filtering and categorization. Define your own scheme or use suggested ranges:
+
+| Range | Suggested Use |
+|-------|---------------|
+| 1000-1999 | Motion events (progress, waypoints) |
+| 2000-2999 | Safety events (collision, estop) |
+| 3000-3999 | Status/diagnostic events |
+| 4000-4999 | Application-specific events |
+| 5000-5999 | Streaming data events |
+
+### Unsolicited Events
+
+Events not tied to any transaction (e.g., robot hit a wall, unexpected state change):
 
 ```swift
-class DeviceCommunicator: TransactionHandlerDelegate {
-    func transactionHandler<Command: TransactionalCommand>(
-        _ handler: TransactionHandler<Command>,
-        sendCommand command: String,
-        transactionID: Int
-    ) {
-        // Send command via socket/serial/etc.
-        socket.send(command)
+// Subscribe to all unsolicited events
+handler.unsolicitedEventPublisher
+    .sink { event in
+        print("Device event: code=\(event.code) payload=\(event.payload ?? "")")
+    }
+    .store(in: &cancellables)
+
+// Filter for safety events only
+handler.unsolicitedEventPublisher
+    .filter { $0.code >= 2000 && $0.code < 3000 }
+    .sink { event in
+        handleSafetyEvent(event)
+    }
+    .store(in: &cancellables)
+```
+
+### Solicited Events
+
+Events associated with a specific transaction (e.g., waypoint reached, progress update):
+
+```swift
+let moveTransaction = handler.submit(moveCmd)
+
+// Subscribe to events during this transaction
+moveTransaction.eventPublisher
+    .sink { event in
+        switch event.code {
+        case 1001: print("Waypoint reached: \(event.payload ?? "")")
+        case 1002: print("Progress: \(event.payload ?? "")%")
+        default: break
+        }
+    }
+    .store(in: &cancellables)
+
+// Access all events after completion
+moveTransaction.resultPublisher
+    .sink { _ in
+        print("Received \(moveTransaction.events.count) events during execution")
+    }
+    .store(in: &cancellables)
+```
+
+### Processing Incoming Events
+
+Route events from your device communication layer:
+
+```swift
+// Using a DeviceEvent struct
+let event = DeviceEvent(code: 2001, payload: "collision detected", transactionID: nil)
+handler.processEvent(event)
+
+// Using convenience method
+handler.processEvent(code: 1001, payload: "waypoint-3", transactionID: 123)
+```
+
+## Communication Pipes
+
+The handler supports a pipe-based architecture for integrating with communication layers.
+
+### Pipe Protocols (Foundation Candidates)
+
+| Protocol | Direction | Purpose |
+|----------|-----------|---------|
+| `TransactableMessageSending` | Outbound | Send messages to device |
+| `TransactableMessageReceiving` | Inbound | Assign receive handler |
+| `MessagePipe` | Bidirectional | Combined send/receive |
+| `TransactionPipe` | Transaction-aware | Specialized for TransactionHandler |
+
+### Attaching a Pipe
+
+```swift
+// Using CallbackMessagePipe for flexible integration
+let pipe = CallbackMessagePipe(
+    sendHandler: { message, priority in
+        socketClient.send(message, priority: priority)
+        return true
+    },
+    receiveHandler: { callback in
+        // Route incoming messages to the callback
+        socketClient.messageHandler = callback
+    }
+)
+
+// Attach to handler
+handler.attachPipe(pipe)
+
+// Set up message parser to route responses
+handler.messageParser = { handler, message in
+    // Parse the message and route appropriately
+    if let (trID, response) = parseResponse(message) {
+        handler.processResponse(transactionID: trID, response: response)
+    } else if let (trID, ack) = parseAck(message) {
+        handler.processAcknowledgment(transactionID: trID)
+    } else if let event = parseEvent(message) {
+        handler.processEvent(event)
     }
 }
+```
+
+### Detaching
+
+```swift
+handler.detachPipe()
 ```
 
 ## Command Types
@@ -185,5 +303,18 @@ let cmd = RobotCommand("home", resourceID: "robot-1", commandType: .motion)
 | `TransactionHandler.swift` | Main handler class |
 | `Transaction.swift` | Transaction state tracking |
 | `DeviceState.swift` | Device states and errors |
+| `DeviceEvent.swift` | Event types for solicited/unsolicited events |
+| `MessagePipeProtocol.swift` | Pipe protocols for communication integration |
 
 See also: `Commands/TransactionalCommandCategory.swift` for the category enum.
+
+## Foundation Protocol Candidates
+
+The following protocols in `MessagePipeProtocol.swift` are candidates for extraction to `spmFoundationTools`:
+
+- `TransactableMessageSending` - Outbound message transmission
+- `TransactableMessageReceiving` - Inbound handler assignment
+- `MessagePipe` - Bidirectional combination
+- `CallbackMessagePipe` - Closure-based implementation
+
+These provide a common base for any component needing bidirectional string-based communication.

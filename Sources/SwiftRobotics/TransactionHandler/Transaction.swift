@@ -72,6 +72,16 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
     /// Publisher that emits the final result when the transaction completes.
     public let resultPublisher: OpenCombine.PassthroughSubject<TransactionResult, Never>
 
+    /// Publisher that emits solicited events associated with this transaction.
+    ///
+    /// Solicited events are updates from the device during command execution,
+    /// such as progress updates, waypoint notifications, or streaming data.
+    /// Subscribe to receive real-time updates while the transaction executes.
+    public let eventPublisher: OpenCombine.PassthroughSubject<DeviceEvent, Never>
+
+    /// All events received for this transaction, in order.
+    public private(set) var events: [DeviceEvent] = []
+
     private let lock = NSLock()
 
     /// Creates a new transaction for the given command.
@@ -88,6 +98,7 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
         self.timeout = timeout ?? TimeInterval(command.timeout ?? 30.0)
         self.statePublisher = CurrentValueSubject(.pending)
         self.resultPublisher = PassthroughSubject()
+        self.eventPublisher = PassthroughSubject()
     }
 
     /// Marks the transaction as sent to the device.
@@ -128,6 +139,7 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
         updateState(.completed)
         resultPublisher.send(.completed(transactionID: id, response: response))
         resultPublisher.send(completion: .finished)
+        eventPublisher.send(completion: .finished)
     }
 
     /// Marks the transaction as failed.
@@ -141,6 +153,7 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
         updateState(.failed)
         resultPublisher.send(.failed(transactionID: id, error: error))
         resultPublisher.send(completion: .finished)
+        eventPublisher.send(completion: .finished)
     }
 
     /// Marks the transaction as timed out.
@@ -152,6 +165,7 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
         updateState(.timedOut)
         resultPublisher.send(.timedOut(transactionID: id))
         resultPublisher.send(completion: .finished)
+        eventPublisher.send(completion: .finished)
     }
 
     /// Marks the transaction as cancelled.
@@ -163,6 +177,17 @@ public final class Transaction<Command: TransactionalCommand>: @unchecked Sendab
         updateState(.cancelled)
         resultPublisher.send(.failed(transactionID: id, error: .cancelled))
         resultPublisher.send(completion: .finished)
+        eventPublisher.send(completion: .finished)
+    }
+
+    /// Receives a solicited event for this transaction.
+    ///
+    /// - Parameter event: The event to process.
+    func receiveEvent(_ event: DeviceEvent) {
+        lock.lock()
+        defer { lock.unlock() }
+        events.append(event)
+        eventPublisher.send(event)
     }
 
     /// Elapsed time since the transaction was sent, or nil if not yet sent.

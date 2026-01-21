@@ -60,9 +60,32 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     /// Maximum queue depth for motion commands.
     public var maxMotionQueueDepth: Int = 100
 
+    /// Publisher for unsolicited events from the device.
+    ///
+    /// Unsolicited events are not associated with any specific transaction.
+    /// They represent general device notifications such as:
+    /// - Collision detection
+    /// - Safety system triggers
+    /// - Device state changes
+    /// - Hardware warnings
+    ///
+    /// Subscribe to receive these events:
+    /// ```swift
+    /// handler.unsolicitedEventPublisher
+    ///     .filter { $0.code >= 2000 && $0.code < 3000 }  // Safety events
+    ///     .sink { event in
+    ///         print("Safety event: \(event)")
+    ///     }
+    ///     .store(in: &cancellables)
+    /// ```
+    public var unsolicitedEventPublisher: OpenCombine.AnyPublisher<DeviceEvent, Never> {
+        unsolicitedEventSubject.eraseToAnyPublisher()
+    }
+
     // MARK: - Private Properties
 
     private let deviceStateSubject: CurrentValueSubject<DeviceState, Never>
+    private let unsolicitedEventSubject = PassthroughSubject<DeviceEvent, Never>()
     private var cancellables = Set<AnyCancellable>()
     private let lock = NSRecursiveLock()
 
@@ -90,8 +113,17 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     /// Timer subscriptions for transaction timeouts.
     private var timeoutTimers: [Int: AnyCancellable] = [:]
 
-    /// Delegate for sending commands to the actual device.
-    public weak var delegate: TransactionHandlerDelegate?
+    /// Communication pipe for sending/receiving messages.
+    private var pipe: (any TransactionPipe)?
+
+    /// Parser for incoming messages. Assign to route messages to appropriate handlers.
+    ///
+    /// The parser receives raw message strings and should call:
+    /// - `processAcknowledgment(transactionID:)` for acks
+    /// - `processResponse(transactionID:response:)` for completions
+    /// - `processError(transactionID:message:)` for errors
+    /// - `processEvent(_:)` or `processEvent(code:payload:transactionID:)` for events
+    public var messageParser: ((_ handler: TransactionHandler<Command>, _ message: String) -> Void)?
 
     // MARK: - Initialization
 
@@ -103,6 +135,62 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     public init(resourceID: String, initialState: DeviceState = .disconnected) {
         self.resourceID = resourceID
         self.deviceStateSubject = CurrentValueSubject(initialState)
+    }
+
+    // MARK: - Pipe Attachment
+
+    /// Attaches a communication pipe for sending and receiving messages.
+    ///
+    /// The pipe provides the transport layer for command/response communication.
+    /// When attached, the pipe's inbound handler is automatically configured to
+    /// route messages through the `messageParser`.
+    ///
+    /// ## Example with CallbackMessagePipe
+    /// ```swift
+    /// let pipe = CallbackMessagePipe(
+    ///     sendHandler: { message, _ in
+    ///         socketClient.send(message)
+    ///         return true
+    ///     },
+    ///     receiveHandler: { callback in
+    ///         socketClient.messageHandler = callback
+    ///     }
+    /// )
+    /// handler.attachPipe(pipe)
+    /// ```
+    ///
+    /// - Parameter pipe: The communication pipe to attach.
+    public func attachPipe(_ pipe: any TransactionPipe) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        self.pipe = pipe
+
+        // Configure inbound message routing
+        pipe.setInboundHandler { [weak self] message in
+            guard let self = self else { return }
+            if let parser = self.messageParser {
+                parser(self, message)
+            }
+        }
+    }
+
+    /// Detaches the current communication pipe.
+    ///
+    /// Clears the pipe reference and removes the inbound handler.
+    public func detachPipe() {
+        lock.lock()
+        defer { lock.unlock() }
+
+        pipe?.setInboundHandler(nil)
+        pipe = nil
+    }
+
+    /// Whether a communication pipe is currently attached.
+    public var hasPipe: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return pipe != nil
     }
 
     // MARK: - Public Methods
@@ -218,6 +306,47 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         transaction.markFailed(error: .deviceError(message: message))
         cleanupTransaction(transaction)
         processNextInQueue(for: transaction.category)
+    }
+
+    /// Processes an event received from the device.
+    ///
+    /// Events are routed based on whether they are solicited or unsolicited:
+    /// - **Solicited events** (with `transactionID`): Routed to the specific
+    ///   transaction's `eventPublisher`
+    /// - **Unsolicited events** (no `transactionID`): Emitted on the handler's
+    ///   `unsolicitedEventPublisher`
+    ///
+    /// - Parameter event: The device event to process.
+    public func processEvent(_ event: DeviceEvent) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        if let transactionID = event.transactionID,
+           let transaction = allActiveTransactions[transactionID] {
+            // Solicited event - route to specific transaction
+            transaction.receiveEvent(event)
+        } else {
+            // Unsolicited event - emit on handler's publisher
+            unsolicitedEventSubject.send(event)
+        }
+    }
+
+    /// Processes an event received from the device using individual parameters.
+    ///
+    /// Convenience method that constructs a `DeviceEvent` and routes it appropriately.
+    ///
+    /// - Parameters:
+    ///   - code: User-assignable event code for filtering.
+    ///   - payload: Optional payload data.
+    ///   - transactionID: Transaction ID for solicited events, nil for unsolicited.
+    public func processEvent(code: Int, payload: String? = nil, transactionID: Int? = nil) {
+        let event = DeviceEvent(
+            code: code,
+            payload: payload,
+            transactionID: transactionID,
+            resourceID: resourceID
+        )
+        processEvent(event)
     }
 
     /// Updates the device state.
@@ -354,7 +483,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         startTimeout(for: transaction)
 
         let serialized = transaction.command.serialize(transactionID: String(transaction.id))
-        delegate?.transactionHandler(self, sendCommand: serialized, transactionID: transaction.id)
+        pipe?.sendCommand(serialized, transactionID: transaction.id)
     }
 
     private func startTimeout(for transaction: Transaction<Command>) {
@@ -444,24 +573,4 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         }
         settableQueue.removeAll()
     }
-}
-
-// MARK: - Delegate Protocol
-
-/// Delegate protocol for handling device communication.
-///
-/// Implement this protocol to connect the TransactionHandler to actual
-/// device communication (sockets, serial ports, etc.).
-public protocol TransactionHandlerDelegate: AnyObject {
-    /// Called when the handler needs to send a command to the device.
-    ///
-    /// - Parameters:
-    ///   - handler: The handler requesting the send.
-    ///   - command: The serialized command string.
-    ///   - transactionID: The transaction ID for response routing.
-    func transactionHandler<Command: TransactionalCommand>(
-        _ handler: TransactionHandler<Command>,
-        sendCommand command: String,
-        transactionID: Int
-    )
 }
