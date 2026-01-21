@@ -41,6 +41,8 @@ let package = Package(
                 .product(name: "FoundationTypes", package: "spmFoundationTools"),
                 .product(name: "spmMathTools", package: "spmMathTools"),
                 .product(name: "kvSIMD", package: "kvSIMD.swift"),
+                .product(name: "OpenCombine", package: "OpenCombine"),
+                .product(name: "OpenCombineDispatch", package: "OpenCombine"),
             ],
             path: "Sources/SwiftRobotics"
         ),

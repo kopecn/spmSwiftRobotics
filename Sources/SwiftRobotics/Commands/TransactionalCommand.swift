@@ -15,11 +15,30 @@ public protocol TransactionalCommand: Codable, Sendable {
     /// Arguments for the command. Empty array if no arguments.
     var arguments: [String] { get }
 
+    /// Optional timeout in seconds
+    var timeout: Float? { get }
+
+    /// TransactionID for this command
+    var trID: Int { get }
+
+    var commandType: TransactionalCommandCategory { get }
+
+    /// Resource identifier for the target device/robot.
+    ///
+    /// Used to route commands to the correct handler and maintain
+    /// identification as messages are passed through the system.
+    var resourceID: String? { get }
+
     /// Serializes the command into terminal transaction format.
     ///
     /// - Parameter transactionID: The transaction ID to include in the serialized format.
     /// - Returns: A string in the format `<transactionID,command,arg1,arg2,...>`
     func serialize(transactionID: String) -> String
+}
+
+extension TransactionalCommand {
+    /// Default implementation returns nil for backward compatibility.
+    public var resourceID: String? { nil }
 }
 
 // MARK: - Default Implementation
