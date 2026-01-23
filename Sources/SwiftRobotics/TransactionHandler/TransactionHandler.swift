@@ -145,20 +145,6 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     /// When attached, the pipe's inbound handler is automatically configured to
     /// route messages through the `messageParser`.
     ///
-    /// ## Example with CallbackMessagePipe
-    /// ```swift
-    /// let pipe = CallbackMessagePipe(
-    ///     sendHandler: { message, _ in
-    ///         socketClient.send(message)
-    ///         return true
-    ///     },
-    ///     receiveHandler: { callback in
-    ///         socketClient.messageHandler = callback
-    ///     }
-    /// )
-    /// handler.attachPipe(pipe)
-    /// ```
-    ///
     /// - Parameter pipe: The communication pipe to attach.
     public func attachPipe(_ pipe: any TransactionPipe) {
         lock.lock()

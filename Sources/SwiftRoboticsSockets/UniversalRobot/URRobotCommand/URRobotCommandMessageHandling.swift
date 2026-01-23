@@ -1,4 +1,7 @@
+import Foundation
 import SocketCommon
+
+import FoundationInterfaces
 
 /// Handles messages received from the robot command client.
 ///
@@ -7,7 +10,25 @@ import SocketCommon
 /// This class is marked as `@unchecked Sendable` because it holds a weak reference
 /// to the `URRobotCommandHandler`, which is not `Sendable`. The weak reference
 /// ensures no concurrency issues as the reference isn't strongly retained or mutated concurrently.
-final class URRobotCommandMessageHandling: @unchecked Sendable, MessageHandling {
+final class URRobotCommandMessageHandling: @unchecked Sendable, MessageSendable, MessageReceivable {
+
+
+    func send(to id: (any Identifiable)?, _ data: Data, _ priority: Int, _ queueIfDisconnected: Bool) -> Bool {
+        return false
+    }
+
+    func send(to id: (any Identifiable)?, _ message: String, _ priority: Int, _ queueIfDisconnected: Bool) -> Bool {
+        return false
+    }
+
+    func setDataMessageHandler(_ handler: (@Sendable (Data) -> Void)?) {
+        
+    }
+
+    func setStringMessageHandler(_ handler: (@Sendable (String) -> Void)?) {
+        
+    }
+
 
     /// A weak reference to the robot command handler delegate.
     private weak var delegate: URRobotCommandHandler?

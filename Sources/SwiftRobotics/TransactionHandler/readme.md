@@ -238,34 +238,7 @@ The handler supports a pipe-based architecture for integrating with communicatio
 
 ### Attaching a Pipe
 
-```swift
-// Using CallbackMessagePipe for flexible integration
-let pipe = CallbackMessagePipe(
-    sendHandler: { message, priority in
-        socketClient.send(message, priority: priority)
-        return true
-    },
-    receiveHandler: { callback in
-        // Route incoming messages to the callback
-        socketClient.messageHandler = callback
-    }
-)
-
-// Attach to handler
-handler.attachPipe(pipe)
-
-// Set up message parser to route responses
-handler.messageParser = { handler, message in
-    // Parse the message and route appropriately
-    if let (trID, response) = parseResponse(message) {
-        handler.processResponse(transactionID: trID, response: response)
-    } else if let (trID, ack) = parseAck(message) {
-        handler.processAcknowledgment(transactionID: trID)
-    } else if let event = parseEvent(message) {
-        handler.processEvent(event)
-    }
-}
-```
+TODO - need to fix this section
 
 ### Detaching
 
@@ -315,6 +288,5 @@ The following protocols in `MessagePipeProtocol.swift` are candidates for extrac
 - `TransactableMessageSending` - Outbound message transmission
 - `TransactableMessageReceiving` - Inbound handler assignment
 - `MessagePipe` - Bidirectional combination
-- `CallbackMessagePipe` - Closure-based implementation
 
 These provide a common base for any component needing bidirectional string-based communication.

@@ -1,11 +1,30 @@
+import Foundation
 import SocketCommon
+
+import FoundationInterfaces
 
 /// Handles messages received from the robot Primary server (port 30001).
 ///
 /// This class is marked as `@unchecked Sendable` because it holds a weak reference
 /// to the `URRobotScriptHandler`, which is not `Sendable`. The weak reference
 /// ensures no concurrency issues as the reference isn't strongly retained or mutated concurrently.
-final class URRobotScriptMessageHandling: @unchecked Sendable, MessageHandling {
+final class URRobotScriptMessageHandling: @unchecked Sendable, MessageSendable, MessageReceivable {
+
+    func send(to id: (any Identifiable)?, _ data: Data, _ priority: Int, _ queueIfDisconnected: Bool) -> Bool {
+        return false
+    }
+
+    func send(to id: (any Identifiable)?, _ message: String, _ priority: Int, _ queueIfDisconnected: Bool) -> Bool {
+        return false
+    }
+
+    func setDataMessageHandler(_ handler: (@Sendable (Data) -> Void)?) {
+        
+    }
+
+    func setStringMessageHandler(_ handler: (@Sendable (String) -> Void)?) {
+        
+    }
 
     /// Weak reference to the URScript handler delegate.
     private weak var delegate: URRobotScriptHandler?
