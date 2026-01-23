@@ -2,6 +2,8 @@ import Foundation
 import OpenCombine
 import OpenCombineDispatch
 
+import FoundationInterfaces
+
 /// A handler for managing transactional commands with a single device resource.
 ///
 /// `TransactionHandler` provides composable transaction management for robots
@@ -114,7 +116,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     private var timeoutTimers: [Int: AnyCancellable] = [:]
 
     /// Communication pipe for sending/receiving messages.
-    private var pipe: (any TransactionPipe)?
+    private var pipe: (any MessageDuplex)?
 
     /// Parser for incoming messages. Assign to route messages to appropriate handlers.
     ///
@@ -146,14 +148,16 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     /// route messages through the `messageParser`.
     ///
     /// - Parameter pipe: The communication pipe to attach.
-    public func attachPipe(_ pipe: any TransactionPipe) {
+    public func attachPipe(
+        _ pipe: any MessageDuplex
+    ) {
         lock.lock()
         defer { lock.unlock() }
 
         self.pipe = pipe
 
         // Configure inbound message routing
-        pipe.setInboundHandler { [weak self] message in
+        pipe.setStringMessageHandler { [weak self] message in
             guard let self = self else { return }
             if let parser = self.messageParser {
                 parser(self, message)
@@ -168,7 +172,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         lock.lock()
         defer { lock.unlock() }
 
-        pipe?.setInboundHandler(nil)
+        pipe?.setStringMessageHandler(nil)
         pipe = nil
     }
 
@@ -469,7 +473,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         startTimeout(for: transaction)
 
         let serialized = transaction.command.serialize(transactionID: String(transaction.id))
-        pipe?.sendCommand(serialized, transactionID: transaction.id)
+        pipe?.send(to: nil, serialized, 0, false)
     }
 
     private func startTimeout(for transaction: Transaction<Command>) {

@@ -2,34 +2,60 @@ import Testing
 import Foundation
 import OpenCombine
 
+import FoundationInterfaces
 @testable import SwiftRobotics
 
 // MARK: - Test Infrastructure
 
 /// Mock pipe for testing TransactionHandler
-final class MockTransactionPipe: TransactionPipe, @unchecked Sendable {
+final class MockTransactionPipe: MessageDuplex, @unchecked Sendable {
     private let lock = NSLock()
 
-    var sentCommands: [(command: String, transactionID: Int)] = []
-    var inboundHandler: (@Sendable (String) async -> Void)?
+    var sentCommands: [(command: String, priority: Int)] = []
+    var stringMessageHandler: (@Sendable (String) -> Void)?
+    var dataMessageHandler: (@Sendable (Data) -> Void)?
+
+    // MARK: - MessageSendable
 
     @discardableResult
-    func sendCommand(_ command: String, transactionID: Int) -> Bool {
+    func send(to id: (any Identifiable)?, _ data: Data, _ priority: Int, _ queueIfDisconnected: Bool) -> Bool {
+        if let message = String(data: data, encoding: .utf8) {
+            return send(to: id, message, priority, queueIfDisconnected)
+        }
+        return false
+    }
+
+    @discardableResult
+    func send(to id: (any Identifiable)?, _ message: String, _ priority: Int, _ queueIfDisconnected: Bool) -> Bool {
         lock.lock()
-        sentCommands.append((command, transactionID))
+        sentCommands.append((message, priority))
         lock.unlock()
         return true
     }
 
-    func setInboundHandler(_ handler: (@Sendable (String) async -> Void)?) {
+    // MARK: - MessageReceivable
+
+    func setDataMessageHandler(_ handler: (@Sendable (Data) -> Void)?) {
         lock.lock()
-        inboundHandler = handler
+        dataMessageHandler = handler
         lock.unlock()
     }
 
+    func setStringMessageHandler(_ handler: (@Sendable (String) -> Void)?) {
+        lock.lock()
+        stringMessageHandler = handler
+        lock.unlock()
+    }
+
+    func handleMessage(_ message: String) async {
+        stringMessageHandler?(message)
+    }
+
+    // MARK: - Test Helpers
+
     /// Simulate receiving a message from the device
     func simulateInbound(_ message: String) async {
-        await inboundHandler?(message)
+        stringMessageHandler?(message)
     }
 
     func reset() {
@@ -77,7 +103,7 @@ struct TransactionHandlerBasicTests {
         let txn = handler.submit(cmd)
 
         #expect(pipe.sentCommands.count == 1)
-        #expect(pipe.sentCommands[0].transactionID == txn.id)
+        #expect(pipe.sentCommands[0].command.contains("\(txn.id)"))
         #expect(pipe.sentCommands[0].command.contains("home"))
     }
 

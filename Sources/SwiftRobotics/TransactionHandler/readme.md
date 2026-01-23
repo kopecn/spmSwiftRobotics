@@ -233,8 +233,6 @@ The handler supports a pipe-based architecture for integrating with communicatio
 |----------|-----------|---------|
 | `TransactableMessageSending` | Outbound | Send messages to device |
 | `TransactableMessageReceiving` | Inbound | Assign receive handler |
-| `MessagePipe` | Bidirectional | Combined send/receive |
-| `TransactionPipe` | Transaction-aware | Specialized for TransactionHandler |
 
 ### Attaching a Pipe
 
@@ -277,16 +275,12 @@ let cmd = RobotCommand("home", resourceID: "robot-1", commandType: .motion)
 | `Transaction.swift` | Transaction state tracking |
 | `DeviceState.swift` | Device states and errors |
 | `DeviceEvent.swift` | Event types for solicited/unsolicited events |
-| `MessagePipeProtocol.swift` | Pipe protocols for communication integration |
 
 See also: `Commands/TransactionalCommandCategory.swift` for the category enum.
 
 ## Foundation Protocol Candidates
 
-The following protocols in `MessagePipeProtocol.swift` are candidates for extraction to `spmFoundationTools`:
-
 - `TransactableMessageSending` - Outbound message transmission
 - `TransactableMessageReceiving` - Inbound handler assignment
-- `MessagePipe` - Bidirectional combination
 
 These provide a common base for any component needing bidirectional string-based communication.
