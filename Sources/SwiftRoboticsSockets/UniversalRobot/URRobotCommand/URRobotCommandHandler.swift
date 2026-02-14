@@ -1,10 +1,13 @@
 import Foundation
 import Logging
-import NIOHandler
 import OpenCombine
 import OpenCombineDispatch
+
+import NIOHandler
 import SocketCommon
+
 import SwiftRoboticAssets
+import SwiftRobotics
 
 /// Handles Universal Robot command server socket connections and message handling.
 ///
@@ -39,6 +42,7 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
     private var connectionStateCancellable: AnyCancellable?
 
     /// Handler for incoming robot command messages.
+    let transactionHandler: TransactionHandler<URRobotCommands>
     var commandMessageHandler: URRobotCommandMessageHandling?
 
     /// The server socket instance handling robot commands.
@@ -47,9 +51,14 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
     /// Initializes the handler.
     /// - Parameter connectOnLaunch: If true, starts listening immediately.
     public init(
-        connectOnLaunch: Bool = false
+        connectOnLaunch: Bool = false,
+        resourceID: String? = nil
     ) {
         logger.info("🟢 UR Robot Class Handler Initialized ")
+        self.transactionHandler = TransactionHandler<URRobotCommands>(
+            resourceID: resourceID ?? UUID().uuidString
+        )
+
         if connectOnLaunch {
             self.startListening()
         }
@@ -61,9 +70,18 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
     ///   - connectOnLaunch: If true, starts listening immediately.
     /// - Note: This is a convenience initializer for testing and custom configurations.
     ///         The default parameterless init() is preferred for reactive frontends.
-    public init(port: Int, connectOnLaunch: Bool = false) {
+    public init(
+        port: Int, 
+        connectOnLaunch: Bool = false,
+        resourceID: String? = nil
+    ) {
         self.port = port
         logger.info("🟢 UR Robot Class Handler Initialized with Port: \(port)")
+
+        self.transactionHandler = TransactionHandler<URRobotCommands>(
+            resourceID: resourceID ?? UUID().uuidString
+        )
+
         if connectOnLaunch {
             self.startListening()
         }
