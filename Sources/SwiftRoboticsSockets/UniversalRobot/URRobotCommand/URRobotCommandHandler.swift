@@ -1,11 +1,9 @@
 import Foundation
 import Logging
+import NIOHandler
 import OpenCombine
 import OpenCombineDispatch
-
-import NIOHandler
 import SocketCommon
-
 import SwiftRoboticAssets
 import SwiftRobotics
 
@@ -71,7 +69,7 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
     /// - Note: This is a convenience initializer for testing and custom configurations.
     ///         The default parameterless init() is preferred for reactive frontends.
     public init(
-        port: Int, 
+        port: Int,
         connectOnLaunch: Bool = false,
         resourceID: String? = nil
     ) {

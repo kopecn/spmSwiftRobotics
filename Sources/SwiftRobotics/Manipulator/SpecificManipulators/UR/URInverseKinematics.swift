@@ -1,5 +1,4 @@
 import Foundation
-
 import FoundationTypes
 import spmMathTools
 
@@ -117,7 +116,7 @@ public struct URInverseKinematics: Sendable {
     // during high-frequency IK computations (1-4 kHz cycle times)
 
     /// Vector from frame 0 to frame 5 origin (P₀⁵), used for θ₁ calculation
-    var vector0to5: Position<Float> = Position<Float>(x:0, y: 0, z: 0)
+    var vector0to5: Position<Float> = Position<Float>(x: 0, y: 0, z: 0)
 
     /// Angle ψ = atan2(P₀⁵_y, P₀⁵_x) for θ₁ calculation
     var psi: Float = 0
@@ -135,7 +134,7 @@ public struct URInverseKinematics: Sendable {
     var transform1to4: PoseRobot = PoseRobot.identity
 
     /// Vector from frame 1 to frame 3 origin (P₁³), used for θ₂ and θ₃ calculation
-    var vector1to3: Position<Float> = Position<Float>(x:0, y: 0, z: 0)
+    var vector1to3: Position<Float> = Position<Float>(x: 0, y: 0, z: 0)
 
     /// Z-component of P₁⁶, used for θ₅ calculation
     var vector1to6z: Float = 0
@@ -184,9 +183,9 @@ public struct URInverseKinematics: Sendable {
         d6 = link6.d
 
         // Precompute constant vectors for vector operations
-        
-        d6Vect = Position<Float>(x:0, y: 0, z: -link6.d)
-        d4Vect = Position<Float>(x:0, y: -link4.d, z: 0)
+
+        d6Vect = Position<Float>(x: 0, y: 0, z: -link6.d)
+        d4Vect = Position<Float>(x: 0, y: -link4.d, z: 0)
     }
 
     // MARK: - Private Helper Methods: Joint Angle Calculations
@@ -315,7 +314,7 @@ public struct URInverseKinematics: Sendable {
     private func getTheta4(
         transform3to4: PoseRobot
     ) -> Float {
-        
+
         atan2(transform3to4.quaternion.xy, transform3to4.quaternion.xx)
     }
 
@@ -489,8 +488,8 @@ public struct URInverseKinematics: Sendable {
         )
 
         self.theta4 = getTheta4(
-            transform3to4: (
-                l2.getPose(theta: self.theta2) * l3.getPose(theta: self.theta3)).inverse * self.transform1to4
+            transform3to4: (l2.getPose(theta: self.theta2) * l3.getPose(theta: self.theta3)).inverse
+                * self.transform1to4
         )
 
         return PostureSerialRobot(

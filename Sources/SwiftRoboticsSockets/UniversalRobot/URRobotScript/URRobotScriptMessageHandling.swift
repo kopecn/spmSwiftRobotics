@@ -1,7 +1,6 @@
 import Foundation
-import SocketCommon
-
 import FoundationInterfaces
+import SocketCommon
 
 /// Handles messages received from the robot Primary server (port 30001).
 ///
@@ -11,19 +10,19 @@ import FoundationInterfaces
 final class URRobotScriptMessageHandling: @unchecked Sendable, MessageSendable, MessageReceivable {
 
     func send(to id: (any Identifiable)?, _ data: Data, _ priority: Int, _ queueIfDisconnected: Bool) -> Bool {
-        return false
+        false
     }
 
     func send(to id: (any Identifiable)?, _ message: String, _ priority: Int, _ queueIfDisconnected: Bool) -> Bool {
-        return false
+        false
     }
 
     func setDataMessageHandler(_ handler: (@Sendable (Data) -> Void)?) {
-        
+
     }
 
     func setStringMessageHandler(_ handler: (@Sendable (String) -> Void)?) {
-        
+
     }
 
     /// Weak reference to the URScript handler delegate.

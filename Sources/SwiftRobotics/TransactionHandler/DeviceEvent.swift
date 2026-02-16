@@ -116,9 +116,7 @@ extension DeviceEvent {
 
 extension DeviceEvent: Equatable, Hashable {
     public static func == (lhs: DeviceEvent, rhs: DeviceEvent) -> Bool {
-        lhs.code == rhs.code &&
-        lhs.timestamp == rhs.timestamp &&
-        lhs.transactionID == rhs.transactionID
+        lhs.code == rhs.code && lhs.timestamp == rhs.timestamp && lhs.transactionID == rhs.transactionID
     }
 
     public func hash(into hasher: inout Hasher) {

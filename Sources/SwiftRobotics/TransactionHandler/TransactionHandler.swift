@@ -1,8 +1,7 @@
 import Foundation
+import FoundationInterfaces
 import OpenCombine
 import OpenCombineDispatch
-
-import FoundationInterfaces
 
 /// A handler for managing transactional commands with a single device resource.
 ///
@@ -312,7 +311,8 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         defer { lock.unlock() }
 
         if let transactionID = event.transactionID,
-           let transaction = allActiveTransactions[transactionID] {
+            let transaction = allActiveTransactions[transactionID]
+        {
             // Solicited event - route to specific transaction
             transaction.receiveEvent(event)
         } else {
@@ -397,9 +397,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     // MARK: - Private Methods
 
     private func handleMotionSubmission(_ transaction: Transaction<Command>) {
-        guard deviceState != .disconnected &&
-              deviceState != .error &&
-              deviceState != .estop else {
+        guard deviceState != .disconnected && deviceState != .error && deviceState != .estop else {
             transaction.markFailed(error: .deviceNotReady(state: deviceState))
             allActiveTransactions.removeValue(forKey: transaction.id)
             return
@@ -419,9 +417,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     }
 
     private func handleQuerySubmission(_ transaction: Transaction<Command>) {
-        guard deviceState != .disconnected &&
-              deviceState != .error &&
-              deviceState != .estop else {
+        guard deviceState != .disconnected && deviceState != .error && deviceState != .estop else {
             transaction.markFailed(error: .deviceNotReady(state: deviceState))
             allActiveTransactions.removeValue(forKey: transaction.id)
             return
@@ -437,9 +433,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
     }
 
     private func handleSettableSubmission(_ transaction: Transaction<Command>) {
-        guard deviceState != .disconnected &&
-              deviceState != .error &&
-              deviceState != .estop else {
+        guard deviceState != .disconnected && deviceState != .error && deviceState != .estop else {
             transaction.markFailed(error: .deviceNotReady(state: deviceState))
             allActiveTransactions.removeValue(forKey: transaction.id)
             return
@@ -481,7 +475,8 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         let timeout = transaction.timeout
 
         let timer = DispatchQueue.OCombine(.global())
-            .schedule(after: .init(.now() + timeout), interval: .seconds(Int(timeout)), tolerance: .milliseconds(100)) { [weak self] in
+            .schedule(after: .init(.now() + timeout), interval: .seconds(Int(timeout)), tolerance: .milliseconds(100)) {
+                [weak self] in
                 self?.handleTimeout(transactionID: transactionID)
             }
 
@@ -498,7 +493,8 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
         defer { lock.unlock() }
 
         guard let transaction = allActiveTransactions[transactionID],
-              !transaction.isTerminal else { return }
+            !transaction.isTerminal
+        else { return }
 
         transaction.markTimedOut()
         cleanupTransaction(transaction)
@@ -533,7 +529,7 @@ public final class TransactionHandler<Command: TransactionalCommand>: @unchecked
                 executeMotion(next)
             }
         case .query:
-            break // Queries don't queue
+            break  // Queries don't queue
         case .settable:
             if activeSettableTransaction == nil, let next = settableQueue.first {
                 settableQueue.removeFirst()

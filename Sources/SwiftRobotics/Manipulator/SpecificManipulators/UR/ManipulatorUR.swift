@@ -1,4 +1,3 @@
-
 class ManipulatorUR: ManipulatorSerial {
     var inverseKinematics: URInverseKinematics
 
@@ -17,7 +16,7 @@ class ManipulatorUR: ManipulatorSerial {
             let link5 = links[4] as? KinematicLinkDH,
             let link6 = links[5] as? KinematicLinkDH
         else {
-            return nil 
+            return nil
         }
 
         self.inverseKinematics = URInverseKinematics(
