@@ -1,6 +1,7 @@
 import Foundation
 import Logging
 import SwiftRoboticAssets
+import SwiftRobotics
 
 // MARK: - Waveform Management
 

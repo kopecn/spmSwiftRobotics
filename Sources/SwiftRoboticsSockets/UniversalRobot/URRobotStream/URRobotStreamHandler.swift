@@ -5,6 +5,7 @@ import OpenCombine
 import OpenCombineDispatch
 import SocketCommon
 import SwiftRoboticAssets
+import SwiftRobotics
 
 /// Handles Universal Robot stream server socket connections and message handling.
 ///
@@ -39,7 +40,7 @@ public class URRobotStreamHandler: OpenCombine.ObservableObject {
     var streamServerSocket: NIOSocketHandlerServer?
 
     /// The currently loaded waveform for streaming.
-    var currentlyLoadedWaveform: WaveformStreamer?
+    var currentlyLoadedWaveform: WaveformStreamer<URStreamWaveform>?
 
     /// Initializes the stream handler.
     /// - Parameter connectOnLaunch: If true, starts listening immediately.
