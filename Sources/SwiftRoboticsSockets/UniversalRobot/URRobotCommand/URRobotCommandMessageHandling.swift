@@ -37,13 +37,15 @@ final class URRobotCommandMessageHandling: @unchecked Sendable, MessageSendable,
     }
 
     /// Handles an incoming message from the robot command client.
-    /// Updates the delegate's `lastResponse` property on the main actor.
+    /// Updates the delegate's `lastResponse` property and forwards to transaction handler.
     /// - Parameter message: The message string received from the robot.
     func handleMessage(_ message: String) async {
         await MainActor.run {
             logger.info("🟢 Recv: \(message)")
             delegate?.lastResponse = message
-            // FIXME: - Add appropriate handler for transaction management.
+            if let handler = delegate?.transactionHandler, let parser = handler.messageParser {
+                parser(handler, message)
+            }
         }
     }
 }

@@ -56,6 +56,7 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
         self.transactionHandler = TransactionHandler<URRobotCommands>(
             resourceID: resourceID ?? UUID().uuidString
         )
+        configureMessageParser()
 
         if connectOnLaunch {
             self.startListening()
@@ -79,9 +80,69 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
         self.transactionHandler = TransactionHandler<URRobotCommands>(
             resourceID: resourceID ?? UUID().uuidString
         )
+        configureMessageParser()
 
         if connectOnLaunch {
             self.startListening()
+        }
+    }
+
+    /// Configures the message parser on the transaction handler.
+    ///
+    /// Parses UR protocol messages in the format `<trID,type,code[,verbiage]>` where:
+    /// - `type` is `ack`, `res`, or `evt`
+    /// - `code` indicates success (0) or error (1/2)
+    /// - `verbiage` is an optional human-readable message
+    private func configureMessageParser() {
+
+        // TODO: - extract this parser to to its own stand alone reusable method on with emission callback
+        transactionHandler.messageParser = { handler, message in
+            // Strip angle brackets if present
+            var trimmed = message.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("<") && trimmed.hasSuffix(">") {
+                trimmed = String(trimmed.dropFirst().dropLast())
+            }
+
+            let parts = trimmed.split(separator: ",", maxSplits: 3).map { String($0).trimmingCharacters(in: .whitespaces) }
+            guard parts.count >= 3 else {
+                logger.warning("🟡 Unparseable message: \(message)")
+                return
+            }
+
+            let trIDString = parts[0]
+            let type = parts[1].lowercased()
+            let codeString = parts[2]
+            let verbiage = parts.count > 3 ? parts[3] : nil
+
+            let trID = Int(trIDString)
+            let code = Int(codeString) ?? -1
+
+            switch type {
+            case "ack":
+                if code == 0, let trID = trID {
+                    handler.processAcknowledgment(transactionID: trID)
+                } else if let trID = trID {
+                    handler.processError(transactionID: trID, message: verbiage ?? "ACK error (code \(code))")
+                }
+
+            case "res":
+                if code == 0, let trID = trID {
+                    handler.processResponse(transactionID: trID, response: verbiage)
+                } else if let trID = trID {
+                    handler.processError(transactionID: trID, message: verbiage ?? "Response error (code \(code))")
+                }
+
+            case "evt":
+                let eventCode = code
+                if let trID = trID, trID >= 0 {
+                    handler.processEvent(code: eventCode, payload: verbiage, transactionID: trID)
+                } else {
+                    handler.processEvent(code: eventCode, payload: verbiage, transactionID: nil)
+                }
+
+            default:
+                logger.warning("🟡 Unknown message type '\(type)': \(message)")
+            }
         }
     }
 
@@ -129,11 +190,22 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
 
         commandServerSocket = NIOSocketHandlerServer()
 
+        transactionHandler.attachPipe(commandServerSocket!)
+
         connectionStateCancellable = commandServerSocket?.serverConnectionStatePublisher
             .receive(on: DispatchQueue.main.ocombine)
             .sink { [weak self] state in
                 logger.debug("🔵 Socket state changed: \(state)")
                 self?.connectionState = state
+
+                switch state {
+                case .activeConnections:
+                    self?.transactionHandler.updateDeviceState(.idle)
+                case .off, .error:
+                    self?.transactionHandler.updateDeviceState(.disconnected)
+                default:
+                    break
+                }
             }
 
         commandServerSocket?.listen(
@@ -144,6 +216,7 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
 
     /// Tears down the server socket and cancels subscriptions.
     private func teardown() {
+        transactionHandler.detachPipe()
         connectionStateCancellable?.cancel()
         commandServerSocket?.shutdown()
 

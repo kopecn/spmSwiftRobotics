@@ -5,13 +5,11 @@ import SwiftRobotics
 extension URRobotCommandHandler {
 
     /// Sends a formatted command to the robot using transaction protocol.
-    /// - Parameter command: The `RobotCommand` to send.
-    public func sendCommand(_ command: URRobotCommands) {
-        // TODO: Implement proper transaction ID management (increment, wrap at 899)
-        guard let commandServerSocket = commandServerSocket else { return }
-        let transactionID = "1"
-        let msg = command.serialize(transactionID: transactionID)
-        commandServerSocket.send(msg)
+    /// - Parameter command: The `URRobotCommands` to send.
+    /// - Returns: A `Transaction` for tracking progress and subscribing to results.
+    @discardableResult
+    public func sendCommand(_ command: URRobotCommands) -> Transaction<URRobotCommands> {
+        transactionHandler.submit(command)
     }
 
     /// Initializes the robot by sending the `.initRobot` command.

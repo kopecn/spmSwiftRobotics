@@ -9,6 +9,7 @@ SwiftRobotics is a Swift library for robotic manipulator kinematics, dynamics, a
 ### Core Components
 
 #### SwiftRobotics (Library)
+
 The main library providing robotics functionality:
 
 - **Kinematics**: Forward/inverse kinematics, pose and posture representations
@@ -28,6 +29,7 @@ The main library providing robotics functionality:
   - SIMD extensions for homogeneous transforms
 
 #### SwiftRoboticAssets (Target)
+
 Asset management for robot visualization resources.
 
 ## Dependencies
@@ -49,7 +51,9 @@ Asset management for robot visualization resources.
   - ⚠️ Verify Linux compatibility before use
 
 ### Dependency Review Process
+
 When adding new dependencies:
+
 1. Verify Linux/ARM64 support in package documentation
 2. Test build on Linux environment (Docker or native)
 3. Confirm no platform-specific APIs (Darwin-only frameworks)
@@ -61,6 +65,7 @@ When adding new dependencies:
 **All packages must be compatible with Linux and NVIDIA Jetson platforms.**
 
 ### Supported Platforms
+
 - **macOS**: 14.0+ (development and testing)
 - **Linux**: Ubuntu 20.04+, Debian-based distributions
 - **NVIDIA Jetson**: Jetson Nano, TX2, Xavier NX, AGX Xavier, Orin series
@@ -69,7 +74,9 @@ When adding new dependencies:
 ### Platform-Specific Requirements
 
 #### Linux (General)
+
 - GTK-4 development libraries for SwiftCrossUI visualizer:
+
   ```bash
   # Debian/Ubuntu
   sudo apt install libgtk-4-dev clang
@@ -79,6 +86,7 @@ When adding new dependencies:
   ```
 
 #### NVIDIA Jetson
+
 - JetPack SDK 4.6+ or 5.0+ (depending on Jetson model)
 - CUDA Toolkit (included in JetPack)
 - GTK-4 libraries:
@@ -90,6 +98,7 @@ When adding new dependencies:
 - Recommended: 4GB+ RAM for compilation
 
 ### Cross-Platform Compatibility Guidelines
+
 - Use only cross-platform Swift standard library APIs
 - Avoid platform-specific Foundation APIs where possible
 - Test on both x86_64 and ARM64 architectures
@@ -99,11 +108,13 @@ When adding new dependencies:
 ## Code Conventions
 
 ### Naming
+
 - Types: PascalCase (e.g., `KinematicLinkDH`, `ManipulatorSerial`)
 - Properties/Methods: camelCase (e.g., `getPose`, `centerOfMass`)
 - Protocols: PascalCase with "Protocol" suffix (e.g., `KinematicLinkProtocol`, `ManipulatorProtocol`)
 
 ### File Organization
+
 ```
 Sources/
 ├── SwiftRobotics/
@@ -116,13 +127,16 @@ Sources/
 ```
 
 ### Denavit-Hartenberg Convention
+
 The library uses standard DH parameters for kinematic chains:
+
 - `a`: Link length (distance along x-axis)
 - `alpha`: Link twist (rotation around x-axis in radians)
 - `d`: Link offset (distance along z-axis)
 - `theta`: Joint angle (rotation around z-axis in radians)
 
 ### Transform Representation
+
 - DH transform construction available via SIMD extensions
 
 ## Key Features
@@ -140,11 +154,13 @@ The library uses standard DH parameters for kinematic chains:
 ### Building
 
 #### macOS
+
 ```bash
 swift build
 ```
 
 #### Linux / Jetson
+
 ```bash
 # Standard build
 swift build
@@ -159,11 +175,13 @@ swift build -v
 ### Testing
 
 #### All Platforms
+
 ```bash
 swift test
 ```
 
 #### Platform-Specific Tests
+
 ```bash
 # Run specific test suite
 swift test --filter SwiftRoboticsTests
@@ -175,11 +193,13 @@ swift test --parallel
 ### Cross-Compilation Considerations
 
 When developing on macOS for Linux/Jetson deployment:
+
 - Test on actual target hardware regularly
 - Consider ARM64 architecture differences in SIMD operations
 - Profile performance on target Jetson hardware
 
 ### Formatting
+
 The project uses `swift-format` for code formatting. Configuration should be in `.swift-format`.
 
 ```bash
@@ -190,6 +210,7 @@ swift-format -i -r Sources/ Tests/
 ### Cross-Platform Testing Strategy
 
 #### Local Testing
+
 ```bash
 # macOS development
 swift test
@@ -202,12 +223,15 @@ ssh jetson-device 'cd /path/to/project && swift test'
 ```
 
 #### Continuous Integration
+
 Consider setting up CI pipelines that test on:
+
 - macOS (x86_64/ARM64)
 - Linux (x86_64) via Docker
 - Linux (ARM64) via cross-compilation or native build
 
 #### Testing Checklist for New Features
+
 - [ ] Compiles on macOS
 - [ ] Compiles on Linux x86_64
 - [ ] Tests pass on macOS
@@ -219,6 +243,7 @@ Consider setting up CI pipelines that test on:
 ## Extension Points
 
 To add a new robot manipulator:
+
 1. Create a new file in `Sources/SwiftRobotics/Manipulator/SpecificManipulators/<Vendor>/`
 2. Implement `ManipulatorProtocol`
 3. Define kinematic links using `KinematicLinkDH`
@@ -227,10 +252,10 @@ To add a new robot manipulator:
 
 ## Deployment
 
-
 ### Package Configuration
 
 Ensure `Package.swift` is configured for cross-platform compatibility:
+
 ```swift
 platforms: [
     .macOS(.v14),
@@ -250,7 +275,7 @@ platforms: [
 
 ## Recommended Fixes
 
-### High Priority
+### High Priority®
 
 - [ ] **1. Resolve TODO/FIXME in socket handlers**
   - `URRobotCommandMessageHandling.swift` — FIXME: "Add appropriate handler for transaction management"

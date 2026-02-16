@@ -35,7 +35,7 @@ def body():
     #   - Writes always succeed (may overwrite oldest data when full)
     #   - When full and writing, tail advances (oldest data discarded)
     #   - Both head and tail wrap circularly using modulo
-    global ring_buffer = struct(data = make_list(con.buffer_size * 6, 0.0, con.buffer_size * 6),head = 0,tail = 0,count = 0,isPrimed = False,trID="-1")
+    global ring_buffer = struct(data = make_list(con.buffer_size * 6, 0.0, con.buffer_size * 6),head = 0,tail = 0,count = 0,isPrimed = False)
 
 
     def send_message(socket_name, message):
@@ -275,11 +275,10 @@ def body():
         ring_buffer.head = 0
         ring_buffer.count = 0
         ring_buffer.isPrimed = False
-        ring_buffer.trID = trID
         exit_critical
 
         streaming_active = True
-        return False
+        return res_suc(trID)
     end
 
     def stop_streaming_sub():
@@ -291,7 +290,6 @@ def body():
         ring_buffer.head = 0
         ring_buffer.count = 0
         ring_buffer.isPrimed = False
-        ring_buffer.trID = "-1"
         exit_critical
     end
 
@@ -566,7 +564,6 @@ def body():
 
                 enter_critical
                 isPrimed = ring_buffer.isPrimed
-                trID = ring_buffer.trID
                 exit_critical
                 if not isPrimed and streaming_active:
                     sync()
@@ -600,7 +597,7 @@ def body():
                     servoj(target_joints, t=con.servoj_time, lookahead_time=con.servoj_lookahead, gain=con.servoj_gain)
                 elif isPrimed and not has_data:
                     stop_streaming_sub()
-                    res_suc(trID)
+                    evt_unsol(1008, "Streaming buffer drained")
                 else:
                     sync()
                 end
