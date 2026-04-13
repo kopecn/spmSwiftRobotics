@@ -1,4 +1,5 @@
 import Foundation
+import FoundationTransactions
 import Logging
 import NIOHandler
 import OpenCombine
@@ -33,8 +34,8 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
         }
     }
 
-    /// Port used for the command server socket. Defaults to 50001.
-    private var port: Int = 50001
+    /// Port used for the command server socket. Defaults to ``URNetworkConfiguration/commandPort``.
+    private var port: Int = URNetworkConfiguration.commandPort
 
     /// Cancellable for connection state publisher subscription.
     private var connectionStateCancellable: AnyCancellable?
@@ -65,7 +66,7 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
 
     /// Initializes the handler with custom port.
     /// - Parameters:
-    ///   - port: The port to listen on for robot command connections. Defaults to 50001.
+    ///   - port: The port to listen on for robot command connections. Defaults to ``URNetworkConfiguration/commandPort``.
     ///   - connectOnLaunch: If true, starts listening immediately.
     /// - Note: This is a convenience initializer for testing and custom configurations.
     ///         The default parameterless init() is preferred for reactive frontends.
@@ -94,54 +95,42 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
     /// - `code` indicates success (0) or error (1/2)
     /// - `verbiage` is an optional human-readable message
     private func configureMessageParser() {
-
-        // TODO: - extract this parser to to its own stand alone reusable method on with emission callback
         transactionHandler.messageParser = { handler, message in
-            // Strip angle brackets if present
-            var trimmed = message.trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("<") && trimmed.hasSuffix(">") {
-                trimmed = String(trimmed.dropFirst().dropLast())
-            }
-
-            let parts = trimmed.split(separator: ",", maxSplits: 3).map { String($0).trimmingCharacters(in: .whitespaces) }
-            guard parts.count >= 3 else {
+            guard let parsed = URProtocolMessageParser.parse(message) else {
                 logger.warning("🟡 Unparseable message: \(message)")
                 return
             }
 
-            let trIDString = parts[0]
-            let type = parts[1].lowercased()
-            let codeString = parts[2]
-            let verbiage = parts.count > 3 ? parts[3] : nil
-
-            let trID = Int(trIDString)
-            let code = Int(codeString) ?? -1
-
-            switch type {
-            case "ack":
-                if code == 0, let trID = trID {
+            switch parsed.type {
+            case .ack:
+                if parsed.code == 0, let trID = parsed.trID {
                     handler.processAcknowledgment(transactionID: trID)
-                } else if let trID = trID {
-                    handler.processError(transactionID: trID, message: verbiage ?? "ACK error (code \(code))")
+                } else if let trID = parsed.trID {
+                    handler.processError(
+                        transactionID: trID,
+                        message: parsed.verbiage ?? "ACK error (code \(parsed.code))"
+                    )
                 }
 
-            case "res":
-                if code == 0, let trID = trID {
-                    handler.processResponse(transactionID: trID, response: verbiage)
-                } else if let trID = trID {
-                    handler.processError(transactionID: trID, message: verbiage ?? "Response error (code \(code))")
+            case .res:
+                if parsed.code == 0, let trID = parsed.trID {
+                    handler.processResponse(transactionID: trID, response: parsed.verbiage)
+                } else if let trID = parsed.trID {
+                    handler.processError(
+                        transactionID: trID,
+                        message: parsed.verbiage ?? "Response error (code \(parsed.code))"
+                    )
                 }
 
-            case "evt":
-                let eventCode = code
-                if let trID = trID, trID >= 0 {
-                    handler.processEvent(code: eventCode, payload: verbiage, transactionID: trID)
+            case .evt:
+                if let trID = parsed.trID, trID >= 0 {
+                    handler.processEvent(code: parsed.code, payload: parsed.verbiage, transactionID: trID)
                 } else {
-                    handler.processEvent(code: eventCode, payload: verbiage, transactionID: nil)
+                    handler.processEvent(code: parsed.code, payload: parsed.verbiage)
                 }
 
-            default:
-                logger.warning("🟡 Unknown message type '\(type)': \(message)")
+            case .unknown(let typeStr):
+                logger.warning("🟡 Unknown message type '\(typeStr)': \(message)")
             }
         }
     }
@@ -200,9 +189,9 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
 
                 switch state {
                 case .activeConnections:
-                    self?.transactionHandler.updateDeviceState(.idle)
+                    self?.transactionHandler.updateResourceState(.idle)
                 case .off, .error:
-                    self?.transactionHandler.updateDeviceState(.disconnected)
+                    self?.transactionHandler.updateResourceState(.disconnected)
                 default:
                     break
                 }

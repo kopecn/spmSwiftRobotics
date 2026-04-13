@@ -4,34 +4,34 @@
 
 ### Socket Handlers
 
-The UR robot integration uses multiple socket handlers located in `socketHandling/` to communicate with different interfaces:
+The UR robot integration uses four socket handlers in `Sources/SwiftRoboticsSockets/UniversalRobot/` to communicate with different UR interfaces. Port constants are centralized in `URNetworkConfiguration`.
 
-#### URRobotScript (`socketHandling/URRobotScript/`)
+#### URRobotScript (`UniversalRobot/URRobotScript/`)
 - **Client-Host, Server-Robot** (Swift connects to robot)
-- **Primary client interface** (port 30001 on robot)
+- **Primary client interface** (port `URNetworkConfiguration.scriptPort` = 30001 on robot)
 - URScript upload and execution
 
-#### URRobotDashboard (`socketHandling/URRobotDashboard/`)
+#### URRobotDashboard (`UniversalRobot/URRobotDashboard/`)
 - **Client-Host, Server-Robot** (Swift connects to robot)
-- **Dashboard server** (port 29999 on robot)
-- High-level robot state queries
-- Safety and operational status
+- **Dashboard server** (port `URNetworkConfiguration.dashboardPort` = 29999 on robot)
+- High-level robot state queries and safety status
 - See `URDashboardCommand.swift` for available commands
 
-#### URRobotCommand (`socketHandling/URRobotCommand/`)
+#### URRobotCommand (`UniversalRobot/URRobotCommand/`)
 - **Client-Robot, Server-Host** (Robot connects to Swift via reverse socket)
-- **Default port 50001** (on Swift host)
-- Transaction-based command execution
+- **Default port `URNetworkConfiguration.commandPort`** = 50001 (on Swift host)
+- Transaction-based command execution via `TransactionHandler<URRobotCommands>`
 - Discrete robot control operations (init, home, startstreaming, etc.)
-- Created by URScript and connects back to host
-- See `URCommand.swift` for available commands
+- Robot-side URScript initiates the connection back to the Swift host
+- See `URRobotCommands.swift` for the full command list
+- `URProtocolMessageParser` parses `<trID,type,code[,verbiage]>` frames
 
-#### URRobotStream (`socketHandling/URRobotStream/`)
+#### URRobotStream (`UniversalRobot/URRobotStream/`)
 - **Client-Robot, Server-Host** (Robot connects to Swift via reverse socket)
-- **Default port 50002** (on Swift host)
+- **Default port `URNetworkConfiguration.streamPort`** = 50002 (on Swift host)
 - Buffer refill operations only (segmented from command/control)
 - Connects to a ring buffer in URScript (see `Sources/SwiftRoboticAssets/Assets/UR/urScript.script`)
-- High-frequency motion control via buffered streaming
+- High-frequency motion control via buffered streaming at 500Hz
 - Supports waveform-based motion (example: `Sources/SwiftRoboticAssets/Assets/UR/streamRotateBase.json`)
 - Specification: `Sources/SwiftRoboticAssets/Assets/UR/readme.md`
 

@@ -1,5 +1,6 @@
 import Foundation
 import FoundationInterfaces
+import FoundationTransactions
 import OpenCombine
 import Testing
 
@@ -75,7 +76,7 @@ struct TransactionHandlerBasicTests {
         let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .idle)
 
         #expect(handler.resourceID == "test-robot")
-        #expect(handler.deviceState == .idle)
+        #expect(handler.resourceState == .idle)
         #expect(handler.hasPipe == false)
     }
 
@@ -99,7 +100,7 @@ struct TransactionHandlerBasicTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let cmd = RobotCommand("home", commandType: .motion)
+        let cmd = RobotCommand("home", commandType: .serial)
         let txn = handler.submit(cmd)
 
         #expect(pipe.sentCommands.count == 1)
@@ -111,13 +112,13 @@ struct TransactionHandlerBasicTests {
     func testDeviceStateUpdate() {
         let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .disconnected)
 
-        #expect(handler.deviceState == .disconnected)
+        #expect(handler.resourceState == .disconnected)
 
-        handler.updateDeviceState(.idle)
-        #expect(handler.deviceState == .idle)
+        handler.updateResourceState(.idle)
+        #expect(handler.resourceState == .idle)
 
-        handler.updateDeviceState(.busy)
-        #expect(handler.deviceState == .busy)
+        handler.updateResourceState(.busy)
+        #expect(handler.resourceState == .busy)
     }
 }
 
@@ -132,7 +133,7 @@ struct TransactionIDResolutionTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let cmd = RobotCommand("status", trID: -1, commandType: .query)
+        let cmd = RobotCommand("status", trID: -1, commandType: .parallel)
         let txn = handler.submit(cmd)
 
         #expect(txn.id >= 1)
@@ -144,7 +145,7 @@ struct TransactionIDResolutionTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let cmd = RobotCommand("status", trID: 12345, commandType: .query)
+        let cmd = RobotCommand("status", trID: 12345, commandType: .parallel)
         let txn = handler.submit(cmd)
 
         #expect(txn.id == 12345)
@@ -156,9 +157,9 @@ struct TransactionIDResolutionTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let txn1 = handler.submit(RobotCommand("status", commandType: .query))
-        let txn2 = handler.submit(RobotCommand("status", commandType: .query))
-        let txn3 = handler.submit(RobotCommand("status", commandType: .query))
+        let txn1 = handler.submit(RobotCommand("status", commandType: .parallel))
+        let txn2 = handler.submit(RobotCommand("status", commandType: .parallel))
+        let txn3 = handler.submit(RobotCommand("status", commandType: .parallel))
 
         #expect(txn2.id == txn1.id + 1)
         #expect(txn3.id == txn2.id + 1)
@@ -177,7 +178,7 @@ struct TimeoutResolutionTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let cmd = RobotCommand("status", timeout: nil, commandType: .query)
+        let cmd = RobotCommand("status", timeout: nil, commandType: .parallel)
         let txn = handler.submit(cmd)
 
         #expect(txn.timeout == 45.0)
@@ -190,7 +191,7 @@ struct TimeoutResolutionTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let cmd = RobotCommand("moveto", timeout: 60.0, commandType: .motion)
+        let cmd = RobotCommand("moveto", timeout: 60.0, commandType: .serial)
         let txn = handler.submit(cmd)
 
         #expect(txn.timeout == 60.0)
@@ -203,7 +204,7 @@ struct TimeoutResolutionTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let cmd = RobotCommand("moveto", timeout: 60.0, commandType: .motion)
+        let cmd = RobotCommand("moveto", timeout: 60.0, commandType: .serial)
         let txn = handler.submit(cmd, timeout: 120.0)
 
         #expect(txn.timeout == 120.0)
@@ -215,68 +216,67 @@ struct TimeoutResolutionTests {
 @Suite("Command Category Tests")
 struct CommandCategoryTests {
 
-    @Test("Motion commands execute serially")
-    func testMotionSerial() {
+    @Test("Serial commands execute one at a time")
+    func testSerialQueue() {
         let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .idle)
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let motion1 = handler.submit(RobotCommand("home", commandType: .motion))
-        let motion2 = handler.submit(RobotCommand("moveto", commandType: .motion))
+        let motion1 = handler.submit(RobotCommand("home", commandType: .serial))
+        let motion2 = handler.submit(RobotCommand("moveto", commandType: .serial))
 
         #expect(motion1.state == .awaitingAck)
         #expect(motion2.state == .queued)
-        #expect(handler.motionQueueCount == 1)
-        #expect(handler.isMotionBusy == true)
+        #expect(handler.serialQueueCount == 1)
+        #expect(handler.isSerialBusy == true)
     }
 
-    @Test("Query commands execute in parallel")
-    func testQueryParallel() {
+    @Test("Parallel commands execute concurrently")
+    func testParallelConcurrent() {
         let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .idle)
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let query1 = handler.submit(RobotCommand("status", commandType: .query))
-        let query2 = handler.submit(RobotCommand("currentpose", commandType: .query))
-        let query3 = handler.submit(RobotCommand("ver", commandType: .query))
+        let query1 = handler.submit(RobotCommand("status", commandType: .parallel))
+        let query2 = handler.submit(RobotCommand("currentpose", commandType: .parallel))
+        let query3 = handler.submit(RobotCommand("ver", commandType: .parallel))
 
         #expect(query1.state == .awaitingAck)
         #expect(query2.state == .awaitingAck)
         #expect(query3.state == .awaitingAck)
-        #expect(handler.activeQueryCount == 3)
+        #expect(handler.activeParallelCount == 3)
     }
 
-    @Test("Settable commands execute serially")
-    func testSettableSerial() {
+    @Test("Exclusive commands execute one at a time")
+    func testExclusiveSerial() {
         let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .idle)
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let set1 = handler.submit(RobotCommand("setPoint", commandType: .settable))
-        let set2 = handler.submit(RobotCommand("calibrate", commandType: .settable))
+        let set1 = handler.submit(RobotCommand("setPoint", commandType: .exclusive))
+        let set2 = handler.submit(RobotCommand("calibrate", commandType: .exclusive))
 
         #expect(set1.state == .awaitingAck)
         #expect(set2.state == .queued)
     }
 
-    @Test("Motion queue processes next after completion")
-    func testMotionQueueProcessing() {
+    @Test("Serial queue processes next after completion")
+    func testSerialQueueProcessing() {
         let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .idle)
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let motion1 = handler.submit(RobotCommand("home", commandType: .motion))
-        let motion2 = handler.submit(RobotCommand("moveto", commandType: .motion))
+        let motion1 = handler.submit(RobotCommand("home", commandType: .serial))
+        let motion2 = handler.submit(RobotCommand("moveto", commandType: .serial))
 
-        #expect(handler.motionQueueCount == 1)
+        #expect(handler.serialQueueCount == 1)
 
-        // Complete the first motion
         handler.processAcknowledgment(transactionID: motion1.id)
         handler.processResponse(transactionID: motion1.id, response: "OK")
 
         #expect(motion1.state == .completed)
         #expect(motion2.state == .awaitingAck)
-        #expect(handler.motionQueueCount == 0)
+        #expect(handler.serialQueueCount == 0)
     }
 }
 
@@ -291,7 +291,7 @@ struct TransactionLifecycleTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let txn = handler.submit(RobotCommand("status", commandType: .query))
+        let txn = handler.submit(RobotCommand("status", commandType: .parallel))
         #expect(txn.state == .awaitingAck)
 
         handler.processAcknowledgment(transactionID: txn.id)
@@ -308,7 +308,7 @@ struct TransactionLifecycleTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let txn = handler.submit(RobotCommand("status", commandType: .query))
+        let txn = handler.submit(RobotCommand("status", commandType: .parallel))
         handler.processAcknowledgment(transactionID: txn.id)
         handler.processResponse(transactionID: txn.id, response: "RUNNING")
 
@@ -321,16 +321,16 @@ struct TransactionLifecycleTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let txn = handler.submit(RobotCommand("moveto", commandType: .motion))
+        let txn = handler.submit(RobotCommand("moveto", commandType: .serial))
         handler.processAcknowledgment(transactionID: txn.id)
         handler.processError(transactionID: txn.id, message: "Joint limit exceeded")
 
         #expect(txn.state == .failed)
         #expect(txn.isTerminal == true)
-        if case .deviceError(let msg) = txn.error {
+        if case .resourceError(let msg) = txn.error {
             #expect(msg == "Joint limit exceeded")
         } else {
-            Issue.record("Expected deviceError")
+            Issue.record("Expected resourceError")
         }
     }
 
@@ -340,7 +340,7 @@ struct TransactionLifecycleTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let txn = handler.submit(RobotCommand("moveto", commandType: .motion))
+        let txn = handler.submit(RobotCommand("moveto", commandType: .serial))
         handler.cancel(transactionID: txn.id)
 
         #expect(txn.state == .cancelled)
@@ -348,74 +348,74 @@ struct TransactionLifecycleTests {
     }
 }
 
-// MARK: - Device State Tests
+// MARK: - Resource State Tests
 
-@Suite("Device State Tests")
-struct DeviceStateTests {
+@Suite("Resource State Tests")
+struct ResourceStateTests {
 
-    @Test("Commands fail when device is disconnected")
+    @Test("Commands fail when resource is disconnected")
     func testDisconnectedState() {
         let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .disconnected)
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let txn = handler.submit(RobotCommand("home", commandType: .motion))
+        let txn = handler.submit(RobotCommand("home", commandType: .serial))
 
         #expect(txn.state == .failed)
-        if case .deviceNotReady(let state) = txn.error {
+        if case .resourceNotReady(let state) = txn.error {
             #expect(state == .disconnected)
         } else {
-            Issue.record("Expected deviceNotReady error")
+            Issue.record("Expected resourceNotReady error")
         }
     }
 
-    @Test("Commands fail when device is in error state")
+    @Test("Commands fail when resource is in error state")
     func testErrorState() {
         let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .error)
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let txn = handler.submit(RobotCommand("home", commandType: .motion))
+        let txn = handler.submit(RobotCommand("home", commandType: .serial))
 
         #expect(txn.state == .failed)
     }
 
-    @Test("Commands fail when device is in estop")
+    @Test("Commands fail when resource is in estop")
     func testEstopState() {
         let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .estop)
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let txn = handler.submit(RobotCommand("home", commandType: .motion))
+        let txn = handler.submit(RobotCommand("home", commandType: .serial))
 
         #expect(txn.state == .failed)
     }
 
-    @Test("Device state change to error cancels active transactions")
+    @Test("Resource state change to error cancels active transactions")
     func testStateChangeCancel() {
         let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .idle)
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let txn = handler.submit(RobotCommand("home", commandType: .motion))
+        let txn = handler.submit(RobotCommand("home", commandType: .serial))
         #expect(txn.state == .awaitingAck)
 
-        handler.updateDeviceState(.error)
+        handler.updateResourceState(.error)
 
         #expect(txn.state == .failed)
     }
 
-    @Test("Motion command sets device to busy on ack")
-    func testBusyStateOnMotion() {
+    @Test("Serial command sets resource to busy on ack")
+    func testBusyStateOnSerial() {
         let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .idle)
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let txn = handler.submit(RobotCommand("home", commandType: .motion))
-        #expect(handler.deviceState == .idle)
+        let txn = handler.submit(RobotCommand("home", commandType: .serial))
+        #expect(handler.resourceState == .idle)
 
         handler.processAcknowledgment(transactionID: txn.id)
-        #expect(handler.deviceState == .busy)
+        #expect(handler.resourceState == .busy)
     }
 }
 
@@ -430,10 +430,9 @@ struct EventHandlingTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let txn = handler.submit(RobotCommand("moveto", commandType: .motion))
+        let txn = handler.submit(RobotCommand("moveto", commandType: .serial))
         handler.processAcknowledgment(transactionID: txn.id)
 
-        // Send a solicited event
         handler.processEvent(code: 1001, payload: "waypoint-1", transactionID: txn.id)
         handler.processEvent(code: 1002, payload: "50%", transactionID: txn.id)
 
@@ -449,7 +448,7 @@ struct EventHandlingTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        var receivedEvents: [DeviceEvent] = []
+        var receivedEvents: [TransactionEvent] = []
         var cancellables = Set<AnyCancellable>()
 
         handler.unsolicitedEventPublisher
@@ -458,7 +457,6 @@ struct EventHandlingTests {
             }
             .store(in: &cancellables)
 
-        // Send unsolicited events (no transaction ID)
         handler.processEvent(code: 2001, payload: "collision detected", transactionID: nil)
         handler.processEvent(code: 2002, payload: "safety zone breach", transactionID: nil)
 
@@ -473,7 +471,7 @@ struct EventHandlingTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        var receivedEvents: [DeviceEvent] = []
+        var receivedEvents: [TransactionEvent] = []
         var cancellables = Set<AnyCancellable>()
 
         handler.unsolicitedEventPublisher
@@ -482,10 +480,55 @@ struct EventHandlingTests {
             }
             .store(in: &cancellables)
 
-        // Event with non-existent transaction ID
         handler.processEvent(code: 9999, payload: "unknown", transactionID: 99999)
 
         #expect(receivedEvents.count == 1)
+    }
+}
+
+// MARK: - Bidirectionality Tests
+
+@Suite("Bidirectionality Tests")
+struct BidirectionalityTests {
+
+    @Test("inboundTransactionHandler is called for unknown transaction IDs")
+    func testInboundHandlerRouting() async throws {
+        let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .idle)
+        let pipe = MockTransactionPipe()
+        handler.attachPipe(pipe)
+
+        var inboundMessages: [String] = []
+
+        handler.messageParser = { h, message in
+            // Simulate a simple parser that routes unknown tx_ids to inbound handler
+            if message.hasPrefix("<999,") {
+                h.inboundTransactionHandler?(h, message)
+            }
+        }
+
+        handler.inboundTransactionHandler = { _, message in
+            inboundMessages.append(message)
+        }
+
+        await pipe.simulateInbound("<999,cmd,home,>")
+        await pipe.simulateInbound("<999,cmd,status,>")
+
+        #expect(inboundMessages.count == 2)
+        #expect(inboundMessages[0] == "<999,cmd,home,>")
+    }
+
+    @Test("inboundTransactionHandler nil does not crash")
+    func testInboundHandlerNilSafe() async throws {
+        let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .idle)
+        let pipe = MockTransactionPipe()
+        handler.attachPipe(pipe)
+
+        handler.messageParser = { h, message in
+            h.inboundTransactionHandler?(h, message)
+        }
+
+        // No inboundTransactionHandler set — should not crash
+        await pipe.simulateInbound("<42,cmd,home,>")
     }
 }
 
@@ -505,7 +548,6 @@ struct MessageParserTests {
             parsedMessages.append(message)
         }
 
-        // Simulate inbound message
         await pipe.simulateInbound("<1,ACK>")
         await pipe.simulateInbound("<1,OK,done>")
 
@@ -520,57 +562,55 @@ struct MessageParserTests {
 @Suite("TransactionHandler Stress Tests")
 struct TransactionHandlerStressTests {
 
-    @Test("Handles many concurrent query transactions")
-    func testManyQueries() {
+    @Test("Handles many concurrent parallel transactions")
+    func testManyParallel() {
         let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .idle)
-        handler.maxConcurrentQueries = 100
+        handler.maxConcurrentParallel = 100
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
         var transactions: [Transaction<RobotCommand>] = []
 
         for i in 0..<50 {
-            let txn = handler.submit(RobotCommand("status\(i)", commandType: .query))
+            let txn = handler.submit(RobotCommand("status\(i)", commandType: .parallel))
             transactions.append(txn)
         }
 
-        #expect(handler.activeQueryCount == 50)
+        #expect(handler.activeParallelCount == 50)
         #expect(transactions.allSatisfy { $0.state == .awaitingAck })
 
-        // Complete all
         for txn in transactions {
             handler.processAcknowledgment(transactionID: txn.id)
             handler.processResponse(transactionID: txn.id, response: "OK")
         }
 
-        #expect(handler.activeQueryCount == 0)
+        #expect(handler.activeParallelCount == 0)
         #expect(transactions.allSatisfy { $0.state == .completed })
     }
 
-    @Test("Handles deep motion queue")
-    func testDeepMotionQueue() {
+    @Test("Handles deep serial queue")
+    func testDeepSerialQueue() {
         let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .idle)
-        handler.maxMotionQueueDepth = 50
+        handler.maxSerialQueueDepth = 50
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
         var transactions: [Transaction<RobotCommand>] = []
 
         for i in 0..<25 {
-            let txn = handler.submit(RobotCommand("move\(i)", commandType: .motion))
+            let txn = handler.submit(RobotCommand("move\(i)", commandType: .serial))
             transactions.append(txn)
         }
 
         #expect(transactions[0].state == .awaitingAck)
-        #expect(handler.motionQueueCount == 24)
+        #expect(handler.serialQueueCount == 24)
 
-        // Process through the queue
         for txn in transactions {
             handler.processAcknowledgment(transactionID: txn.id)
             handler.processResponse(transactionID: txn.id, response: "OK")
         }
 
-        #expect(handler.motionQueueCount == 0)
+        #expect(handler.serialQueueCount == 0)
         #expect(transactions.allSatisfy { $0.state == .completed })
     }
 
@@ -581,7 +621,7 @@ struct TransactionHandlerStressTests {
         handler.attachPipe(pipe)
 
         for i in 0..<100 {
-            let txn = handler.submit(RobotCommand("query\(i)", commandType: .query))
+            let txn = handler.submit(RobotCommand("query\(i)", commandType: .parallel))
             handler.processAcknowledgment(transactionID: txn.id)
             handler.processResponse(transactionID: txn.id, response: "OK\(i)")
 
@@ -598,26 +638,23 @@ struct TransactionHandlerStressTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        // Submit mixed categories
-        let motion1 = handler.submit(RobotCommand("home", commandType: .motion))
-        let query1 = handler.submit(RobotCommand("status", commandType: .query))
-        let query2 = handler.submit(RobotCommand("pose", commandType: .query))
-        let settable1 = handler.submit(RobotCommand("setPoint", commandType: .settable))
-        let motion2 = handler.submit(RobotCommand("moveto", commandType: .motion))
+        let serial1 = handler.submit(RobotCommand("home", commandType: .serial))
+        let parallel1 = handler.submit(RobotCommand("status", commandType: .parallel))
+        let parallel2 = handler.submit(RobotCommand("pose", commandType: .parallel))
+        let exclusive1 = handler.submit(RobotCommand("setPoint", commandType: .exclusive))
+        let serial2 = handler.submit(RobotCommand("moveto", commandType: .serial))
 
-        // Motion blocks motion, queries run parallel, settable is independent
-        #expect(motion1.state == .awaitingAck)
-        #expect(motion2.state == .queued)
-        #expect(query1.state == .awaitingAck)
-        #expect(query2.state == .awaitingAck)
-        #expect(settable1.state == .awaitingAck)
+        #expect(serial1.state == .awaitingAck)
+        #expect(serial2.state == .queued)
+        #expect(parallel1.state == .awaitingAck)
+        #expect(parallel2.state == .awaitingAck)
+        #expect(exclusive1.state == .awaitingAck)
 
-        // Complete motion1, motion2 should start
-        handler.processAcknowledgment(transactionID: motion1.id)
-        handler.processResponse(transactionID: motion1.id)
+        handler.processAcknowledgment(transactionID: serial1.id)
+        handler.processResponse(transactionID: serial1.id)
 
-        #expect(motion1.state == .completed)
-        #expect(motion2.state == .awaitingAck)
+        #expect(serial1.state == .completed)
+        #expect(serial2.state == .awaitingAck)
     }
 
     @Test("Cancel all clears everything")
@@ -626,10 +663,10 @@ struct TransactionHandlerStressTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let motion1 = handler.submit(RobotCommand("home", commandType: .motion))
-        let motion2 = handler.submit(RobotCommand("moveto", commandType: .motion))
-        let query1 = handler.submit(RobotCommand("status", commandType: .query))
-        let settable1 = handler.submit(RobotCommand("setPoint", commandType: .settable))
+        let motion1 = handler.submit(RobotCommand("home", commandType: .serial))
+        let motion2 = handler.submit(RobotCommand("moveto", commandType: .serial))
+        let query1 = handler.submit(RobotCommand("status", commandType: .parallel))
+        let settable1 = handler.submit(RobotCommand("setPoint", commandType: .exclusive))
 
         handler.cancelAll()
 
@@ -637,8 +674,8 @@ struct TransactionHandlerStressTests {
         #expect(motion2.state == .failed)
         #expect(query1.state == .failed)
         #expect(settable1.state == .failed)
-        #expect(handler.motionQueueCount == 0)
-        #expect(handler.activeQueryCount == 0)
+        #expect(handler.serialQueueCount == 0)
+        #expect(handler.activeParallelCount == 0)
     }
 }
 
@@ -647,22 +684,22 @@ struct TransactionHandlerStressTests {
 @Suite("TransactionHandler Publisher Tests")
 struct PublisherTests {
 
-    @Test("Device state publisher emits changes")
-    func testDeviceStatePublisher() async throws {
+    @Test("Resource state publisher emits changes")
+    func testResourceStatePublisher() async throws {
         let handler = TransactionHandler<RobotCommand>(resourceID: "test-robot", initialState: .disconnected)
 
-        var receivedStates: [DeviceState] = []
+        var receivedStates: [ResourceState] = []
         var cancellables = Set<AnyCancellable>()
 
-        handler.deviceStatePublisher
+        handler.resourceStatePublisher
             .sink { state in
                 receivedStates.append(state)
             }
             .store(in: &cancellables)
 
-        handler.updateDeviceState(.idle)
-        handler.updateDeviceState(.busy)
-        handler.updateDeviceState(.idle)
+        handler.updateResourceState(.idle)
+        handler.updateResourceState(.busy)
+        handler.updateResourceState(.idle)
 
         #expect(receivedStates.contains(.idle))
         #expect(receivedStates.contains(.busy))
@@ -674,7 +711,7 @@ struct PublisherTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let txn = handler.submit(RobotCommand("status", commandType: .query))
+        let txn = handler.submit(RobotCommand("status", commandType: .parallel))
 
         var receivedStates: [TransactionState] = []
         var cancellables = Set<AnyCancellable>()
@@ -698,7 +735,7 @@ struct PublisherTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        let txn = handler.submit(RobotCommand("status", commandType: .query))
+        let txn = handler.submit(RobotCommand("status", commandType: .parallel))
 
         var receivedResults: [TransactionResult] = []
         var cancellables = Set<AnyCancellable>()
@@ -714,14 +751,12 @@ struct PublisherTests {
 
         #expect(receivedResults.count >= 2)
 
-        // Check for acknowledged result
         let hasAck = receivedResults.contains { result in
             if case .acknowledged = result { return true }
             return false
         }
         #expect(hasAck)
 
-        // Check for completed result
         let hasCompleted = receivedResults.contains { result in
             if case .completed(_, let response) = result {
                 return response == "RUNNING"

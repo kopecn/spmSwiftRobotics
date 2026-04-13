@@ -39,6 +39,7 @@ let package = Package(
                 .product(name: "FoundationTools", package: "spmFoundationTools"),
                 .product(name: "FoundationCommon", package: "spmFoundationTools"),
                 .product(name: "FoundationTypes", package: "spmFoundationTools"),
+                .product(name: "FoundationTransactions", package: "spmFoundationTools"),
                 .product(name: "spmMathTools", package: "spmMathTools"),
                 .product(name: "kvSIMD", package: "kvSIMD.swift"),
                 .product(name: "OpenCombine", package: "OpenCombine"),
@@ -51,6 +52,7 @@ let package = Package(
             dependencies: [
                 "SwiftRobotics",
                 "SwiftRoboticAssets",
+                .product(name: "FoundationTransactions", package: "spmFoundationTools"),
                 .product(name: "NIOHandler", package: "spmSocketHandlers"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "OpenCombine", package: "OpenCombine"),

@@ -1,3 +1,4 @@
+import FoundationTransactions
 import SwiftRobotics
 
 public struct URRobotCommands: TransactionalCommand {
@@ -12,7 +13,7 @@ public struct URRobotCommands: TransactionalCommand {
 
     public var trID: Int
 
-    public var commandType: TransactionalCommandCategory
+    public var commandType: TransactionConcurrency
 
     /// Resource identifier for the target device/robot.
     public let resourceID: String?
@@ -31,7 +32,7 @@ public struct URRobotCommands: TransactionalCommand {
         timeout: Float? = nil,
         trID: Int? = nil,
         resourceID: String? = nil,
-        commandType: TransactionalCommandCategory = .motion
+        commandType: TransactionConcurrency = .serial
     ) {
         self.commandString = commandString
         self.arguments = arguments
@@ -66,57 +67,51 @@ extension URRobotCommands: Equatable, Hashable {
 
 extension URRobotCommands {
     /// Initializes the robot system.
-    ///
-    /// Standard command supported by all robot types.
     public static let initRobot = URRobotCommands(
         "initRobot",
-        commandType: .motion
+        commandType: .serial
     )
 
     /// Moves the robot to its home position.
-    ///
-    /// Standard command supported by all robot types.
     public static let home = URRobotCommands(
         "home",
-        commandType: .motion
+        commandType: .serial
     )
 
     /// Requests the robot's status.
-    ///
-    /// Standard command supported by all robot types.
     public static let status = URRobotCommands(
         "status",
-        commandType: .query
+        commandType: .parallel
     )
 
     /// Requests the robot's version information.
     public static let ver = URRobotCommands(
         "ver",
-        commandType: .query
+        commandType: .parallel
     )
 
     /// Requests the robot's current TCP pose.
     public static let currentpose = URRobotCommands(
         "currentpose",
-        commandType: .query
+        commandType: .parallel
     )
 
     /// Requests the robot's current joint posture.
     public static let currentposture = URRobotCommands(
         "currentposture",
-        commandType: .query
+        commandType: .parallel
     )
 
     /// Starts streaming mode for high-frequency motion control.
     public static let startstreaming = URRobotCommands(
         "startstreaming",
-        commandType: .motion
+        commandType: .serial
     )
 
     /// Stops streaming mode and clears the motion buffer.
     public static let stopstreaming = URRobotCommands(
         "stopstreaming",
-        commandType: .motion
+        commandType: .serial
     )
 }
 

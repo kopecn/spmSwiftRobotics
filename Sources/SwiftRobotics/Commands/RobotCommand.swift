@@ -1,3 +1,5 @@
+import FoundationTransactions
+
 /// A generic, extensible robot command supporting transaction-based protocols.
 ///
 /// `RobotCommand` provides a flexible command system that can be:
@@ -49,7 +51,7 @@ public struct RobotCommand: TransactionalCommand {
 
     public var trID: Int
 
-    public var commandType: TransactionalCommandCategory
+    public var commandType: TransactionConcurrency
 
     /// Resource identifier for the target device/robot.
     public let resourceID: String?
@@ -68,7 +70,7 @@ public struct RobotCommand: TransactionalCommand {
         timeout: Float? = nil,
         trID: Int? = nil,
         resourceID: String? = nil,
-        commandType: TransactionalCommandCategory = .motion
+        commandType: TransactionConcurrency = .serial
     ) {
         self.commandString = commandString
         self.arguments = arguments
@@ -107,7 +109,7 @@ extension RobotCommand {
     /// Standard command supported by all robot types.
     public static let initRobot = RobotCommand(
         "initRobot",
-        commandType: .motion
+        commandType: .serial
     )
 
     /// Moves the robot to its home position.
@@ -115,7 +117,7 @@ extension RobotCommand {
     /// Standard command supported by all robot types.
     public static let home = RobotCommand(
         "home",
-        commandType: .motion
+        commandType: .serial
     )
 
     /// Requests the robot's status.
@@ -123,37 +125,37 @@ extension RobotCommand {
     /// Standard command supported by all robot types.
     public static let status = RobotCommand(
         "status",
-        commandType: .query
+        commandType: .parallel
     )
 
     /// Requests the robot's version information.
     public static let ver = RobotCommand(
         "ver",
-        commandType: .query
+        commandType: .parallel
     )
 
     /// Requests the robot's current TCP pose.
     public static let currentpose = RobotCommand(
         "currentpose",
-        commandType: .query
+        commandType: .parallel
     )
 
     /// Requests the robot's current joint posture.
     public static let currentposture = RobotCommand(
         "currentposture",
-        commandType: .query
+        commandType: .parallel
     )
 
     /// Starts streaming mode for high-frequency motion control.
     public static let startstreaming = RobotCommand(
         "startstreaming",
-        commandType: .motion
+        commandType: .serial
     )
 
     /// Stops streaming mode and clears the motion buffer.
     public static let stopstreaming = RobotCommand(
         "stopstreaming",
-        commandType: .motion
+        commandType: .serial
     )
 }
 

@@ -1,3 +1,4 @@
+import FoundationTransactions
 import SwiftRobotics
 
 /// Extension for `URRobotCommandHandler` providing high-level robot command methods.

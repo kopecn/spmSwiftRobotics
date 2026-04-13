@@ -2,6 +2,8 @@
 
 A composable transaction management system for robot and automation device communication.
 
+> **Location:** `TransactionHandler` and related types have been moved to `FoundationTransactions` in the `spmFoundationTools` package. Import `FoundationTransactions` to use them.
+
 ## Overview
 
 `TransactionHandler` provides isolated, type-safe transaction handling for devices following the command-acknowledgment-response protocol pattern:
@@ -10,58 +12,56 @@ A composable transaction management system for robot and automation device commu
 cmd → ack → (work) → response
 ```
 
-Each handler manages a single device resource, allowing multiple handlers to coexist for different devices while maintaining isolation.
+Each handler manages a single resource, allowing multiple handlers to coexist for different devices while maintaining isolation.
 
-## Command Categories
+## Concurrency Categories
 
-Commands declare their category via the `commandType` property on `TransactionalCommand`:
+Commands declare their category via `TransactionConcurrency` on `TransactionalCommand`:
 
 | Category | Execution | Queueing | Use Case |
 |----------|-----------|----------|----------|
-| **Motion** | Serial, blocking | Queued | Physical movement commands (home, moveto, jog) |
-| **Query** | Parallel | N/A | Read-only status queries (status, currentpose) |
-| **Settable** | Serial | Queued | Configuration changes (teach points, calibration) |
+| `.serial` | One at a time, blocking | Queued up to `maxSerialQueueDepth` | Physical movement commands (home, moveto) |
+| `.parallel` | Concurrent | Up to `maxConcurrentParallel` | Read-only status queries (status, currentpose) |
+| `.exclusive` | One at a time, independent queue | Queued separately from serial | Configuration commands that shouldn't block motion |
 
-## Device States
+## Resource States
+
+Managed by `ResourceState` (replaces the old `DeviceState`):
 
 | State | Description | Command Acceptance |
 |-------|-------------|-------------------|
-| `disconnected` | No communication established | None |
-| `idle` | Ready for commands | All categories |
-| `busy` | Executing motion command | Query only |
-| `error` | Device error state | None |
-| `estop` | Emergency stop active | None |
-| `initializing` | Startup routines | Query only |
+| `.disconnected` | No communication established | None — commands fail immediately |
+| `.idle` | Ready for commands | All categories |
+| `.busy` | Executing a serial command | All categories (serial are queued) |
+| `.error` | Device error state | None — cancels all active transactions |
+| `.estop` | Emergency stop active | None — cancels all active transactions |
+| `.initializing` | Startup routines | All categories |
 
 ## Usage
 
 ### Basic Setup
 
 ```swift
-import SwiftRobotics
-import OpenCombine
+import FoundationTransactions
 
-// Create handler for a specific device
-let handler = TransactionHandler<RobotCommand>(
-    resourceID: "robot-1",
-    initialState: .idle
-)
+// Create handler for a specific resource
+let handler = TransactionHandler<RobotCommand>(resourceID: "robot-1")
 
-// Set up device communication delegate
-handler.delegate = myDeviceCommunicator
+// Attach a communication pipe (MessageDuplex)
+handler.attachPipe(mySocket)
 
-// Store subscriptions
-var cancellables = Set<AnyCancellable>()
+// Update state when the connection is established
+handler.updateResourceState(.idle)
 ```
 
 ### Submitting Commands
 
 ```swift
-// Motion command (default) - queued if busy
+// Serial command — queued if another serial command is active
 let moveTransaction = handler.submit(.home)
 
-// Query command - runs in parallel
-let statusCmd = RobotCommand("status", commandType: .query)
+// Parallel command — runs concurrently with other parallel commands
+let statusCmd = RobotCommand("status", commandType: .parallel)
 let statusTransaction = handler.submit(statusCmd)
 
 // Subscribe to results
@@ -78,6 +78,8 @@ moveTransaction.resultPublisher
             print("Command \(id) queued at position \(position)")
         case .timedOut(let id):
             print("Command \(id) timed out")
+        case .cancelled(let id):
+            print("Command \(id) cancelled")
         }
     }
     .store(in: &cancellables)
@@ -86,63 +88,48 @@ moveTransaction.resultPublisher
 ### Processing Device Responses
 
 ```swift
-// When device acknowledges command
+// When device acknowledges a command
 handler.processAcknowledgment(transactionID: 123)
 
-// When device completes command
+// When device completes a command
 handler.processResponse(transactionID: 123, response: "OK")
 
-// When device reports error
+// When device reports an error
 handler.processError(transactionID: 123, message: "Joint limit exceeded")
 ```
 
 ### Timeout and Transaction ID Resolution
 
-The handler respects values defined on the command itself, allowing timeouts to be tuned based on observed command behavior or historical data.
+**Transaction ID (`trID`) resolution (priority order):**
+1. Command's `trID` if `>= 0`
+2. Auto-generated unique ID cycling 1–899 (UR protocol range)
 
-**Transaction ID (`trID`) resolution:**
-1. Command's `trID` if valid (>= 0)
-2. Auto-generated unique ID (fallback)
-
-**Timeout resolution:**
+**Timeout resolution (priority order):**
 1. Explicit `timeout` parameter in `submit()`
 2. Command's `timeout` property
-3. Handler's `defaultTimeout` (fallback)
+3. Handler's `defaultTimeout` (default: 30s)
 
 ```swift
-// Command with pre-configured timeout from observed history
 let moveCmd = RobotCommand("moveto",
     arguments: ["1.57", "-1.57", "0.0"],
-    timeout: 45.0,  // Based on historical execution time
-    commandType: .motion
+    timeout: 45.0,
+    commandType: .serial
 )
-handler.submit(moveCmd)  // Uses 45 second timeout
-
-// Override at submission time if needed
-handler.submit(moveCmd, timeout: 120.0)  // Explicit override to 120 seconds
-
-// Command with assigned transaction ID for correlation
-let trackedCmd = RobotCommand("status",
-    trID: 12345,  // Assigned ID for tracking
-    commandType: .query
-)
-let txn = handler.submit(trackedCmd)
-print(txn.id)  // 12345
+handler.submit(moveCmd)           // Uses 45s timeout
+handler.submit(moveCmd, timeout: 120.0)  // Override to 120s
 ```
 
-### Device State Monitoring
+### Resource State Monitoring
 
 ```swift
-handler.deviceStatePublisher
+handler.resourceStatePublisher
     .sink { state in
-        print("Device state: \(state)")
+        print("Resource state: \(state)")
     }
     .store(in: &cancellables)
 ```
 
 ## Events
-
-The handler supports both **solicited** and **unsolicited** events from devices.
 
 ### Event Types
 
@@ -151,136 +138,100 @@ The handler supports both **solicited** and **unsolicited** events from devices.
 | **Solicited** | Associated with a transaction | Transaction's `eventPublisher` |
 | **Unsolicited** | General device notifications | Handler's `unsolicitedEventPublisher` |
 
-### Event Codes
-
-Events carry a user-assignable `code` for filtering and categorization. Define your own scheme or use suggested ranges:
-
-| Range | Suggested Use |
-|-------|---------------|
-| 1000-1999 | Motion events (progress, waypoints) |
-| 2000-2999 | Safety events (collision, estop) |
-| 3000-3999 | Status/diagnostic events |
-| 4000-4999 | Application-specific events |
-| 5000-5999 | Streaming data events |
-
 ### Unsolicited Events
 
-Events not tied to any transaction (e.g., robot hit a wall, unexpected state change):
-
 ```swift
-// Subscribe to all unsolicited events
 handler.unsolicitedEventPublisher
     .sink { event in
-        print("Device event: code=\(event.code) payload=\(event.payload ?? "")")
+        print("Event code=\(event.code) payload=\(event.payload ?? "")")
     }
     .store(in: &cancellables)
 
-// Filter for safety events only
+// Filter for safety events (2000–2999)
 handler.unsolicitedEventPublisher
     .filter { $0.code >= 2000 && $0.code < 3000 }
-    .sink { event in
-        handleSafetyEvent(event)
-    }
+    .sink { event in handleSafetyEvent(event) }
     .store(in: &cancellables)
 ```
 
 ### Solicited Events
 
-Events associated with a specific transaction (e.g., waypoint reached, progress update):
-
 ```swift
 let moveTransaction = handler.submit(moveCmd)
 
-// Subscribe to events during this transaction
 moveTransaction.eventPublisher
     .sink { event in
         switch event.code {
         case 1001: print("Waypoint reached: \(event.payload ?? "")")
-        case 1002: print("Progress: \(event.payload ?? "")%")
         default: break
         }
     }
     .store(in: &cancellables)
-
-// Access all events after completion
-moveTransaction.resultPublisher
-    .sink { _ in
-        print("Received \(moveTransaction.events.count) events during execution")
-    }
-    .store(in: &cancellables)
 ```
 
-### Processing Incoming Events
-
-Route events from your device communication layer:
+### Processing Events from the Device
 
 ```swift
-// Using a DeviceEvent struct
-let event = DeviceEvent(code: 2001, payload: "collision detected", transactionID: nil)
+// Using TransactionEvent struct
+let event = TransactionEvent(code: 2001, payload: "collision detected", transactionID: nil)
 handler.processEvent(event)
 
-// Using convenience method
+// Convenience overload
 handler.processEvent(code: 1001, payload: "waypoint-3", transactionID: 123)
+```
+
+## Bidirectional Usage
+
+`TransactionHandler` supports both outbound and inbound transaction initiation:
+
+- **Outbound** (local initiates): call `submit(_:)` and subscribe to the returned `Transaction`
+- **Inbound** (remote initiates): assign `inboundTransactionHandler`. When an unknown `trID` arrives, the `messageParser` should route it here instead of silently dropping it.
+
+```swift
+handler.inboundTransactionHandler = { handler, message in
+    // Parse the remote-initiated frame, then respond via the pipe
+}
 ```
 
 ## Communication Pipes
 
-The handler supports a pipe-based architecture for integrating with communication layers.
-
-### Pipe Protocols (Foundation Candidates)
-
-| Protocol | Direction | Purpose |
-|----------|-----------|---------|
-| `TransactableMessageSending` | Outbound | Send messages to device |
-| `TransactableMessageReceiving` | Inbound | Assign receive handler |
-
-### Attaching a Pipe
-
-TODO - need to fix this section
-
-### Detaching
+`TransactionHandler` uses `MessageDuplex` (from `FoundationInterfaces`) for transport:
 
 ```swift
+// Attach a pipe (e.g., NIOSocketHandlerServer)
+handler.attachPipe(commandServerSocket)
+
+// Detach on teardown
 handler.detachPipe()
+
+// Check if a pipe is attached
+handler.hasPipe  // Bool
 ```
 
-## Command Types
-
-Commands specify their category via the `commandType` property:
+Inbound messages are routed through `messageParser`:
 
 ```swift
-// Motion command (blocking, serial execution)
-let homeCmd = RobotCommand("home", commandType: .motion)
-
-// Query command (parallel execution)
-let statusCmd = RobotCommand("status", commandType: .query)
-
-// Settable command (serial execution)
-let teachCmd = RobotCommand("teachPoint", arguments: ["p1"], commandType: .settable)
+handler.messageParser = { handler, message in
+    guard let parsed = URProtocolMessageParser.parse(message) else { return }
+    switch parsed.type {
+    case .ack:
+        handler.processAcknowledgment(transactionID: parsed.trID!)
+    case .res:
+        handler.processResponse(transactionID: parsed.trID!, response: parsed.verbiage)
+    case .evt:
+        handler.processEvent(code: parsed.code, payload: parsed.verbiage, transactionID: parsed.trID)
+    default: break
+    }
+}
 ```
 
-## Resource Identification
-
-Commands carry a `resourceID` to maintain identification as they pass through the system:
-
-```swift
-let cmd = RobotCommand("home", resourceID: "robot-1", commandType: .motion)
-```
-
-## Files
+## Files (in spmFoundationTools/FoundationTransactions)
 
 | File | Description |
 |------|-------------|
 | `TransactionHandler.swift` | Main handler class |
-| `Transaction.swift` | Transaction state tracking |
-| `DeviceState.swift` | Device states and errors |
-| `DeviceEvent.swift` | Event types for solicited/unsolicited events |
-
-See also: `Commands/TransactionalCommandCategory.swift` for the category enum.
-
-## Foundation Protocol Candidates
-
-- `TransactableMessageSending` - Outbound message transmission
-- `TransactableMessageReceiving` - Inbound handler assignment
-
-These provide a common base for any component needing bidirectional string-based communication.
+| `Transaction.swift` | Transaction state and publishers |
+| `ResourceState.swift` | Resource state enum (`.disconnected`, `.idle`, `.busy`, `.error`, `.estop`, `.initializing`) |
+| `TransactionEvent.swift` | Event type for solicited/unsolicited events |
+| `TransactionConcurrency.swift` | Concurrency category enum (`.serial`, `.parallel`, `.exclusive`) |
+| `TransactionalCommand.swift` | Protocol for commands; includes default `serialize(transactionID:)` |

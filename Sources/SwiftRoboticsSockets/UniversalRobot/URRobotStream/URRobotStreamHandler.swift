@@ -27,8 +27,8 @@ public class URRobotStreamHandler: OpenCombine.ObservableObject {
         }
     }
 
-    /// Port used for the stream server socket. Defaults to 50002.
-    private var port: Int = 50002
+    /// Port used for the stream server socket. Defaults to ``URNetworkConfiguration/streamPort``.
+    private var port: Int = URNetworkConfiguration.streamPort
 
     /// Cancellable for connection state publisher subscription.
     private var connectionStateCancellable: AnyCancellable?
@@ -55,7 +55,7 @@ public class URRobotStreamHandler: OpenCombine.ObservableObject {
 
     /// Initializes the stream handler with custom port.
     /// - Parameters:
-    ///   - port: The port to listen on for robot stream connections. Defaults to 50002.
+    ///   - port: The port to listen on for robot stream connections. Defaults to ``URNetworkConfiguration/streamPort``.
     ///   - connectOnLaunch: If true, starts listening immediately.
     /// - Note: This is a convenience initializer for testing and custom configurations.
     ///         The default parameterless init() is preferred for reactive frontends.

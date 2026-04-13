@@ -1,4 +1,4 @@
-class ManipulatorUR: ManipulatorSerial {
+public class ManipulatorUR: ManipulatorSerial {
     var inverseKinematics: URInverseKinematics
 
     override public init?() {
@@ -31,7 +31,7 @@ class ManipulatorUR: ManipulatorSerial {
     }
 }
 
-class ManipulatorUR10e: ManipulatorUR {
+public class ManipulatorUR10e: ManipulatorUR {
     /// Initializes a new `ManipulatorUR10e`.
     override public init?() {
         super.init(links: [
@@ -88,7 +88,7 @@ class ManipulatorUR10e: ManipulatorUR {
     }
 }
 
-class ManipulatorUR12e: ManipulatorUR {
+public class ManipulatorUR12e: ManipulatorUR {
     /// Initializes a new `ManipulatorUR12e`.
     override public init?() {
         super.init(links: [
@@ -144,7 +144,7 @@ class ManipulatorUR12e: ManipulatorUR {
     }
 }
 
-class ManipulatorUR15: ManipulatorUR {
+public class ManipulatorUR15: ManipulatorUR {
     /// Initializes a new `ManipulatorUR15e`.
     override public init?() {
         super.init(links: [
@@ -212,7 +212,7 @@ class ManipulatorUR15: ManipulatorUR {
     }
 }
 
-class ManipulatorUR20: ManipulatorUR {
+public class ManipulatorUR20: ManipulatorUR {
     /// Initializes a new `ManipulatorUR20e`.
     override public init?() {
         super.init(links: [
@@ -268,7 +268,7 @@ class ManipulatorUR20: ManipulatorUR {
     }
 }
 
-class ManipulatorUR30: ManipulatorUR {
+public class ManipulatorUR30: ManipulatorUR {
     /// Initializes a new `ManipulatorUR30`.
     override public init?() {
         super.init(links: [
@@ -324,7 +324,7 @@ class ManipulatorUR30: ManipulatorUR {
     }
 }
 
-class ManipulatorUR3e: ManipulatorUR {
+public class ManipulatorUR3e: ManipulatorUR {
     /// Initializes a new `ManipulatorUR30`.
     override public init?() {
         super.init(links: [
@@ -338,7 +338,7 @@ class ManipulatorUR3e: ManipulatorUR {
     }
 }
 
-class ManipulatorUR5e: ManipulatorUR {
+public class ManipulatorUR5e: ManipulatorUR {
     /// Initializes a new `ManipulatorUR5e`.
     override public init?() {
         super.init(links: [
@@ -358,7 +358,7 @@ class ManipulatorUR5e: ManipulatorUR {
     }
 }
 
-class ManipulatorUR7e: ManipulatorUR {
+public class ManipulatorUR7e: ManipulatorUR {
     /// Initializes a new `ManipulatorUR7e`.
     override public init?() {
         super.init(links: [
@@ -378,7 +378,7 @@ class ManipulatorUR7e: ManipulatorUR {
     }
 }
 
-class ManipulatorUR16e: ManipulatorUR {
+public class ManipulatorUR16e: ManipulatorUR {
     /// Initializes a new `ManipulatorUR16e`.
     override public init?() {
         super.init(links: [
@@ -410,7 +410,7 @@ class ManipulatorUR16e: ManipulatorUR {
     }
 }
 
-class ManipulatorUR3: ManipulatorUR {
+public class ManipulatorUR3: ManipulatorUR {
     /// Initializes a new `ManipulatorUR3`.
     override public init?() {
         super.init(links: [
@@ -427,7 +427,7 @@ class ManipulatorUR3: ManipulatorUR {
 /// Represents the UR5 manipulator, a specific implementation of the UR manipulator series.
 /// This class inherits from `ManipulatorUR` and initializes the UR5 manipulator with its specific
 /// kinematic links and parameters.
-class ManipulatorUR5: ManipulatorUR {
+public class ManipulatorUR5: ManipulatorUR {
     /// Initializes a new `ManipulatorUR5`.
     override public init?() {
         super.init(links: [

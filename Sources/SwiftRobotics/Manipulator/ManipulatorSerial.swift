@@ -1,5 +1,5 @@
-class ManipulatorSerial: ManipulatorProtocol {
-    var links: [any KinematicLinkProtocol]
+public class ManipulatorSerial: ManipulatorProtocol {
+    public var links: [any KinematicLinkProtocol]
 
     /// Initializes a new `ManipulatorSerial` with an empty array of links.
     public init?() {

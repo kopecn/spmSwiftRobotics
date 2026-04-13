@@ -29,8 +29,8 @@ public class URRobotScriptHandler: OpenCombine.ObservableObject {
     /// IP address used for the URScript client socket. Defaults to "localhost".
     public var ipAddress: String = "localhost"
 
-    /// Port used for the URScript client socket. Defaults to 30001.
-    private var port: Int = 30001
+    /// Port used for the URScript client socket. Defaults to ``URNetworkConfiguration/scriptPort``.
+    private var port: Int = URNetworkConfiguration.scriptPort
 
     /// IP address for robot callbacks (used in urScript template replacement).
     /// When set, the <<HOST_CALLBACK_IPADDRESS>> placeholder in urScript will be replaced with this value.
@@ -54,10 +54,10 @@ public class URRobotScriptHandler: OpenCombine.ObservableObject {
     /// Initializes the URScript handler with custom IP address and port.
     /// - Parameters:
     ///   - ipAddress: The IP address of the robot URScript server. Defaults to "localhost".
-    ///   - port: The port of the URScript server. Defaults to 30001.
+    ///   - port: The port of the URScript server. Defaults to ``URNetworkConfiguration/scriptPort``.
     /// - Note: This is a convenience initializer for testing and custom configurations.
     ///         The default parameterless init() is preferred for reactive frontends.
-    public init(ipAddress: String, port: Int = 30001) {
+    public init(ipAddress: String, port: Int = URNetworkConfiguration.scriptPort) {
         self.ipAddress = ipAddress
         self.port = port
         logger.info("🟢 URRobotScriptHandler Handler Initialized with IP: \(ipAddress), Port: \(port)")

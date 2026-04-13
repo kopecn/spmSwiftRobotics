@@ -3,7 +3,13 @@
     "allow": [
       "Bash(tree:*)",
       "Bash(swift build:*)",
-      "Bash(swift test:*)"
+      "Bash(swift test:*)",
+      "Bash(grep:*)",
+      "Bash(find Sources -name \"*.swift\" -exec wc -l {} +)",
+      "Bash(find Tests -name \"*.swift\" -exec wc -l {} +)",
+      "Bash(find Sources/SwiftRoboticsSockets -name \"*.swift\" -exec wc -l {} +)",
+      "Bash(.build/debug/SwiftRoboticsPackageTests)",
+      "Bash(ls .build/debug/*.xctest)"
     ],
     "deny": [],
     "ask": []

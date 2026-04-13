@@ -183,23 +183,65 @@ struct UR5eInverseKinematicsTests {
 @Suite("UR Cross-Robot IK Tests")
 struct URCrossRobotTests {
 
-    @Test("Forward-Inverse Kinematics Consistency - UR5e")
+    @Test("Forward Kinematics matches known truth-table pose - UR5e")
+    func testUR5eForwardKinematicsMatchesTruthTable() async throws {
+        guard let robot = ManipulatorUR5e() else {
+            Issue.record("UR5e Type not initialized")
+            return
+        }
+
+        // Truth table entry: home position joint angles → known FK pose
+        let homeAngles: [Float] = [0.0, -2.35619, 0.78539, 0.0, 1.570796, 1.570796]
+        let posture = PostureSerialRobot(jointAngles: homeAngles)
+
+        guard let fkPose = robot.forwardKinematics(posture: posture) else {
+            Issue.record("FK returned nil for valid 6-DOF posture")
+            return
+        }
+
+        // Extract translation from FK result and compare against truth table values
+        let m = fkPose.homogeneousTransform
+        let tx = m.columns.3.x
+        let ty = m.columns.3.y
+        let tz = m.columns.3.z
+
+        let tolerance: Float = 1e-3
+        #expect(abs(tx - 0.20082) < tolerance, "FK tx: expected 0.20082, got \(tx)")
+        #expect(abs(ty - (-0.13330)) < tolerance, "FK ty: expected -0.13330, got \(ty)")
+        #expect(abs(tz - 0.95482) < tolerance, "FK tz: expected 0.95482, got \(tz)")
+    }
+
+    @Test("FK → IK round-trip consistency - UR5e")
     func testUR5eForwardInverseConsistency() async throws {
         guard let robot = ManipulatorUR5e() else {
             Issue.record("UR5e Type not initialized")
             return
         }
 
-        // Test joint configuration
-        _ = [0.1, -0.5, 0.3, -0.2, 0.4, 0.0]
+        // Use the known home position from the truth table
+        let originalAngles: [Float] = [0.0, -2.35619, 0.78539, 0.0, 1.570796, 1.570796]
+        let posture = PostureSerialRobot(jointAngles: originalAngles)
 
-        // Compute forward kinematics (implement when FK is available)
-        // let fkPose = robot.computeForwardKinematics(jointAngles: testJoints)
-        // let ikResult = ikCalculator.computePostureFor(pose: fkPose, whichPose: .shoulderLeftElbowUpWristDown, jointWrap: (0,0,0,0,0,0,0,0))
-        // assertJointAnglesEqual(ikResult!.jointAngles, testJoints, tolerance: 1e-3)
+        // Forward kinematics
+        guard let fkPose = robot.forwardKinematics(posture: posture) else {
+            Issue.record("FK returned nil")
+            return
+        }
 
-        // Placeholder until FK is implemented
-        #expect(Bool(true), "Forward kinematics not yet implemented - placeholder test")
+        // Inverse kinematics back from FK pose
+        var ikCalculator = robot.inverseKinematics
+        let jointWrap = (0, 0, 0, 0, 0, 0, 0, 0)
+        guard let recovered = ikCalculator.computePostureFor(
+            pose: fkPose,
+            whichPose: .shoulderRightElbowUpWristUp,
+            jointWrap: jointWrap
+        ) else {
+            Issue.record("IK returned nil for FK pose")
+            return
+        }
+
+        // Recovered joint angles should match original within tolerance
+        assertJointAnglesEqual(recovered.jointAngles, originalAngles, tolerance: 1e-3)
     }
 
     @Test("All UR robots have IK initialized")

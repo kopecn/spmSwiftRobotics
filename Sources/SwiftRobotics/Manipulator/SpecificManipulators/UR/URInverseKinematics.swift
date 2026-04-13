@@ -496,4 +496,67 @@ public struct URInverseKinematics: Sendable {
             jointAngles: [theta1, theta2, theta3, theta4, theta5, theta6]
         )
     }
+
+    /// Computes inverse kinematics and returns a typed ``IKResult`` describing success or
+    /// the specific reason for failure.
+    ///
+    /// This is the preferred API over ``computePostureFor(pose:whichPose:jointWrap:)``
+    /// when callers need to distinguish between workspace violations, singularities, and
+    /// numerical failures rather than receiving an untyped `nil`.
+    ///
+    /// - Parameters:
+    ///   - pose: Target end-effector pose.
+    ///   - whichPose: One of the 8 shoulder/elbow/wrist configurations to solve for.
+    ///   - jointWrap: Joint wrapping parameters (reserved for future use).
+    /// - Returns: ``IKResult/success(_:)`` with the joint-angle solution, or a failure case
+    ///   indicating why no solution exists.
+    public mutating func computeResultFor(
+        pose: PoseRobot,
+        whichPose: URRobotPostureType,
+        jointWrap: (Int, Int, Int, Int, Int, Int, Int, Int) = (0, 0, 0, 0, 0, 0, 0, 0)
+    ) -> IKResult {
+
+        self.vector0to5 = vector0to5(pose: pose)
+        self.psi = self.getPsi
+        self.phi = self.getPhi
+
+        if psi.isNaN || phi.isNaN {
+            return .outOfWorkspace
+        }
+
+        self.theta1 = getTheta1(whichPose: whichPose)
+        self.vector1to6z = vector1to6z(pose: pose, theta1: theta1)
+        self.theta5 = getTheta5(whichPose: whichPose)
+
+        if self.theta5.isNaN {
+            return .outOfWorkspace
+        }
+
+        self.sinTheta5 = sin(self.theta5)
+        self.transform1to6 = l1.getPose(theta: theta1).inverse * pose
+        self.theta6 = getTheta6(transform1to6: transform1to6)
+
+        if self.theta6.isNaN {
+            return .singular
+        }
+
+        self.transform1to4 = self.transform1to6 * (l5.getPose(theta: theta5) * l6.getPose(theta: self.theta6)).inverse
+        self.vector1to3 = self.transform1to4 * d4Vect
+        self.theta3 = getTheta3(whichPose: whichPose)
+
+        if self.theta3.isNaN {
+            return .outOfWorkspace
+        }
+
+        self.theta2 = getTheta2(theta3: self.theta3)
+        self.theta4 = getTheta4(
+            transform3to4: (l2.getPose(theta: self.theta2) * l3.getPose(theta: self.theta3)).inverse
+                * self.transform1to4
+        )
+
+        let posture = PostureSerialRobot(
+            jointAngles: [theta1, theta2, theta3, theta4, theta5, theta6]
+        )
+        return .success([posture])
+    }
 }
