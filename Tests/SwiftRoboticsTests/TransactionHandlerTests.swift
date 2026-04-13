@@ -66,6 +66,22 @@ final class MockTransactionPipe: MessageDuplex, @unchecked Sendable {
     }
 }
 
+/// Thread-safe message collector for use inside @Sendable closures in tests.
+private final class MessageCollector: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _messages: [String] = []
+
+    var messages: [String] {
+        lock.lock(); defer { lock.unlock() }
+        return _messages
+    }
+
+    func append(_ message: String) {
+        lock.lock(); defer { lock.unlock() }
+        _messages.append(message)
+    }
+}
+
 // MARK: - Basic Transaction Tests
 
 @Suite("TransactionHandler Basic Tests")
@@ -497,7 +513,7 @@ struct BidirectionalityTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        var inboundMessages: [String] = []
+        let collector = MessageCollector()
 
         handler.messageParser = { h, message in
             // Simulate a simple parser that routes unknown tx_ids to inbound handler
@@ -507,14 +523,14 @@ struct BidirectionalityTests {
         }
 
         handler.inboundTransactionHandler = { _, message in
-            inboundMessages.append(message)
+            collector.append(message)
         }
 
         await pipe.simulateInbound("<999,cmd,home,>")
         await pipe.simulateInbound("<999,cmd,status,>")
 
-        #expect(inboundMessages.count == 2)
-        #expect(inboundMessages[0] == "<999,cmd,home,>")
+        #expect(collector.messages.count == 2)
+        #expect(collector.messages[0] == "<999,cmd,home,>")
     }
 
     @Test("inboundTransactionHandler nil does not crash")
@@ -543,17 +559,17 @@ struct MessageParserTests {
         let pipe = MockTransactionPipe()
         handler.attachPipe(pipe)
 
-        var parsedMessages: [String] = []
+        let collector = MessageCollector()
         handler.messageParser = { _, message in
-            parsedMessages.append(message)
+            collector.append(message)
         }
 
         await pipe.simulateInbound("<1,ACK>")
         await pipe.simulateInbound("<1,OK,done>")
 
-        #expect(parsedMessages.count == 2)
-        #expect(parsedMessages[0] == "<1,ACK>")
-        #expect(parsedMessages[1] == "<1,OK,done>")
+        #expect(collector.messages.count == 2)
+        #expect(collector.messages[0] == "<1,ACK>")
+        #expect(collector.messages[1] == "<1,OK,done>")
     }
 }
 
