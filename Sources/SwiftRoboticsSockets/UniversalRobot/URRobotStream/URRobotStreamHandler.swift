@@ -98,7 +98,7 @@ public class URRobotStreamHandler: OpenCombine.ObservableObject {
         port: Int? = nil
     ) {
 
-        guard !(streamServerSocket?.serverConnectionStatePublisher.value ?? .off == .activeConnections) else { return }
+        guard (streamServerSocket?.serverConnectionStatePublisher.value ?? .off) != .activeConnections else { return }
 
         // Update properties if new values are provided
         if let newPort = port {

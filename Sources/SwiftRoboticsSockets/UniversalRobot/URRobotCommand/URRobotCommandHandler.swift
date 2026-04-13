@@ -166,7 +166,7 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
         port: Int? = nil
     ) {
 
-        guard !(commandServerSocket?.serverConnectionStatePublisher.value ?? .off == .activeConnections) else { return }
+        guard (commandServerSocket?.serverConnectionStatePublisher.value ?? .off) != .activeConnections else { return }
 
         // Update properties if new values are provided
         if let newPort = port {
@@ -177,9 +177,10 @@ public class URRobotCommandHandler: OpenCombine.ObservableObject {
 
         self.commandMessageHandler = commandMessageHandler
 
-        commandServerSocket = NIOSocketHandlerServer()
+        let socket = NIOSocketHandlerServer()
+        commandServerSocket = socket
 
-        transactionHandler.attachPipe(commandServerSocket!)
+        transactionHandler.attachPipe(socket)
 
         connectionStateCancellable = commandServerSocket?.serverConnectionStatePublisher
             .receive(on: DispatchQueue.main.ocombine)

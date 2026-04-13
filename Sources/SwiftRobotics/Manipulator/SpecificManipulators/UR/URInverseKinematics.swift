@@ -436,65 +436,10 @@ public struct URInverseKinematics: Sendable {
         whichPose: URRobotPostureType,
         jointWrap: (Int, Int, Int, Int, Int, Int, Int, Int)
     ) -> PostureSerialRobot? {
-
-        self.vector0to5 = vector0to5(pose: pose)
-
-        self.psi = self.getPsi
-        self.phi = self.getPhi
-
-        if psi.isNaN || phi.isNaN {
-            return nil
+        switch computeResultFor(pose: pose, whichPose: whichPose, jointWrap: jointWrap) {
+        case .success(let postures): return postures.first
+        default: return nil
         }
-
-        /// The two solutions for θ1 above correspond to the shoulder
-        /// being either "left" or "right,".
-        self.theta1 = getTheta1(whichPose: whichPose)
-
-        self.vector1to6z = vector1to6z(pose: pose, theta1: theta1)
-
-        /// there are two solutions.
-        /// These solutions correspond to the wrist being "down" and "up."
-        self.theta5 = getTheta5(whichPose: whichPose)
-
-        if self.theta5.isNaN {
-            return nil
-        }
-
-        self.sinTheta5 = sin(self.theta5)
-
-        // Compute T_16 (transform from frame 1 to frame 6) for theta6 calculation
-        self.transform1to6 = l1.getPose(theta: theta1).inverse * pose
-        self.theta6 = getTheta6(transform1to6: transform1to6)
-
-        // Check for wrist singularity
-        if self.theta6.isNaN {
-            return nil
-        }
-
-        self.transform1to4 = self.transform1to6 * (l5.getPose(theta: theta5) * l6.getPose(theta: self.theta6)).inverse
-
-        self.vector1to3 = self.transform1to4 * d4Vect
-
-        /// there are two solutions for θ2 and θ3.
-        /// These solutions are known as “elbow up” and “elbow down.”
-        self.theta3 = getTheta3(whichPose: whichPose)
-
-        if self.theta3.isNaN {
-            return nil
-        }
-
-        self.theta2 = getTheta2(
-            theta3: self.theta3
-        )
-
-        self.theta4 = getTheta4(
-            transform3to4: (l2.getPose(theta: self.theta2) * l3.getPose(theta: self.theta3)).inverse
-                * self.transform1to4
-        )
-
-        return PostureSerialRobot(
-            jointAngles: [theta1, theta2, theta3, theta4, theta5, theta6]
-        )
     }
 
     /// Computes inverse kinematics and returns a typed ``IKResult`` describing success or
@@ -517,6 +462,14 @@ public struct URInverseKinematics: Sendable {
     ) -> IKResult {
 
         self.vector0to5 = vector0to5(pose: pose)
+
+        // Explicit check for the z-axis singularity: wrist center exactly on the base z-axis.
+        // When x == 0 && y == 0, sqrt(x²+y²) = 0 → d4/0 = ∞ → clampAcos(∞) = 0.
+        // Neither psi nor phi would be NaN, so the NaN guard below would silently pass.
+        guard self.vector0to5.x != 0 || self.vector0to5.y != 0 else {
+            return .outOfWorkspace
+        }
+
         self.psi = self.getPsi
         self.phi = self.getPhi
 

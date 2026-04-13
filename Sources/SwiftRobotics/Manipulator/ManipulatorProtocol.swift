@@ -16,7 +16,10 @@ extension ManipulatorProtocol {
     ///   doesn't match the number of links.
     public func forwardKinematics(posture: PostureSerialRobot) -> PoseRobot? {
         let angles = posture.jointAngles
-        guard angles.count == links.count else { return nil }
+        precondition(
+            angles.count == links.count,
+            "forwardKinematics: posture has \(angles.count) joint angles but manipulator has \(links.count) links"
+        )
 
         var transform = matrix_identity_float4x4
         for (link, theta) in zip(links, angles) {

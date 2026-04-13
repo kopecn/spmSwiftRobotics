@@ -32,6 +32,11 @@ public enum IKResult {
     /// the wrist singularity (sin θ₅ ≈ 0) where θ₆ has infinitely many solutions.
     case singular
 
-    /// Catch-all for any other numerical failure that doesn't map to a known case.
+    /// Catch-all for any numerical failure that doesn't map to a known geometric case.
+    ///
+    /// The current closed-form solver always produces `.outOfWorkspace` or `.singular`
+    /// for its failure paths. `.noSolution` is reserved for future iterative or
+    /// numerical solvers that may fail to converge without a clear geometric reason
+    /// (e.g., maximum-iteration exceeded, residual above tolerance).
     case noSolution
 }
