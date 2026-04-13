@@ -1,8 +1,6 @@
 # TransactionHandler
 
-A composable transaction management system for robot and automation device communication.
-
-> **Location:** `TransactionHandler` and related types have been moved to `FoundationTransactions` in the `spmFoundationTools` package. Import `FoundationTransactions` to use them.
+A composable transaction management system for robot and automation device communication. Lives in `spmFoundationTools/FoundationTransactions`. Import `FoundationTransactions` to use it.
 
 ## Overview
 
@@ -26,7 +24,7 @@ Commands declare their category via `TransactionConcurrency` on `TransactionalCo
 
 ## Resource States
 
-Managed by `ResourceState` (replaces the old `DeviceState`):
+Managed by `ResourceState`:
 
 | State | Description | Command Acceptance |
 |-------|-------------|-------------------|
@@ -44,13 +42,8 @@ Managed by `ResourceState` (replaces the old `DeviceState`):
 ```swift
 import FoundationTransactions
 
-// Create handler for a specific resource
 let handler = TransactionHandler<RobotCommand>(resourceID: "robot-1")
-
-// Attach a communication pipe (MessageDuplex)
 handler.attachPipe(mySocket)
-
-// Update state when the connection is established
 handler.updateResourceState(.idle)
 ```
 
@@ -68,18 +61,12 @@ let statusTransaction = handler.submit(statusCmd)
 moveTransaction.resultPublisher
     .sink { result in
         switch result {
-        case .acknowledged(let id):
-            print("Command \(id) acknowledged")
-        case .completed(let id, let response):
-            print("Command \(id) completed: \(response ?? "")")
-        case .failed(let id, let error):
-            print("Command \(id) failed: \(error)")
-        case .queued(let id, let position):
-            print("Command \(id) queued at position \(position)")
-        case .timedOut(let id):
-            print("Command \(id) timed out")
-        case .cancelled(let id):
-            print("Command \(id) cancelled")
+        case .acknowledged(let id): print("Command \(id) acknowledged")
+        case .completed(let id, let response): print("Command \(id) completed: \(response ?? "")")
+        case .failed(let id, let error): print("Command \(id) failed: \(error)")
+        case .queued(let id, let position): print("Command \(id) queued at position \(position)")
+        case .timedOut(let id): print("Command \(id) timed out")
+        case .cancelled(let id): print("Command \(id) cancelled")
         }
     }
     .store(in: &cancellables)
@@ -88,13 +75,8 @@ moveTransaction.resultPublisher
 ### Processing Device Responses
 
 ```swift
-// When device acknowledges a command
 handler.processAcknowledgment(transactionID: 123)
-
-// When device completes a command
 handler.processResponse(transactionID: 123, response: "OK")
-
-// When device reports an error
 handler.processError(transactionID: 123, message: "Joint limit exceeded")
 ```
 
@@ -115,23 +97,19 @@ let moveCmd = RobotCommand("moveto",
     timeout: 45.0,
     commandType: .serial
 )
-handler.submit(moveCmd)           // Uses 45s timeout
-handler.submit(moveCmd, timeout: 120.0)  // Override to 120s
+handler.submit(moveCmd)                // Uses 45s timeout
+handler.submit(moveCmd, timeout: 120.0) // Override to 120s
 ```
 
 ### Resource State Monitoring
 
 ```swift
 handler.resourceStatePublisher
-    .sink { state in
-        print("Resource state: \(state)")
-    }
+    .sink { state in print("Resource state: \(state)") }
     .store(in: &cancellables)
 ```
 
 ## Events
-
-### Event Types
 
 | Type | Description | Routing |
 |------|-------------|---------|
@@ -142,9 +120,7 @@ handler.resourceStatePublisher
 
 ```swift
 handler.unsolicitedEventPublisher
-    .sink { event in
-        print("Event code=\(event.code) payload=\(event.payload ?? "")")
-    }
+    .sink { event in print("Event code=\(event.code) payload=\(event.payload ?? "")") }
     .store(in: &cancellables)
 
 // Filter for safety events (2000–2999)
@@ -182,8 +158,6 @@ handler.processEvent(code: 1001, payload: "waypoint-3", transactionID: 123)
 
 ## Bidirectional Usage
 
-`TransactionHandler` supports both outbound and inbound transaction initiation:
-
 - **Outbound** (local initiates): call `submit(_:)` and subscribe to the returned `Transaction`
 - **Inbound** (remote initiates): assign `inboundTransactionHandler`. When an unknown `trID` arrives, the `messageParser` should route it here instead of silently dropping it.
 
@@ -198,13 +172,8 @@ handler.inboundTransactionHandler = { handler, message in
 `TransactionHandler` uses `MessageDuplex` (from `FoundationInterfaces`) for transport:
 
 ```swift
-// Attach a pipe (e.g., NIOSocketHandlerServer)
 handler.attachPipe(commandServerSocket)
-
-// Detach on teardown
 handler.detachPipe()
-
-// Check if a pipe is attached
 handler.hasPipe  // Bool
 ```
 
@@ -214,24 +183,21 @@ Inbound messages are routed through `messageParser`:
 handler.messageParser = { handler, message in
     guard let parsed = URProtocolMessageParser.parse(message) else { return }
     switch parsed.type {
-    case .ack:
-        handler.processAcknowledgment(transactionID: parsed.trID!)
-    case .res:
-        handler.processResponse(transactionID: parsed.trID!, response: parsed.verbiage)
-    case .evt:
-        handler.processEvent(code: parsed.code, payload: parsed.verbiage, transactionID: parsed.trID)
+    case .ack: handler.processAcknowledgment(transactionID: parsed.trID!)
+    case .res: handler.processResponse(transactionID: parsed.trID!, response: parsed.verbiage)
+    case .evt: handler.processEvent(code: parsed.code, payload: parsed.verbiage, transactionID: parsed.trID)
     default: break
     }
 }
 ```
 
-## Files (in spmFoundationTools/FoundationTransactions)
+## Files (spmFoundationTools/FoundationTransactions)
 
 | File | Description |
 |------|-------------|
 | `TransactionHandler.swift` | Main handler class |
 | `Transaction.swift` | Transaction state and publishers |
-| `ResourceState.swift` | Resource state enum (`.disconnected`, `.idle`, `.busy`, `.error`, `.estop`, `.initializing`) |
+| `ResourceState.swift` | Resource state enum |
 | `TransactionEvent.swift` | Event type for solicited/unsolicited events |
-| `TransactionConcurrency.swift` | Concurrency category enum (`.serial`, `.parallel`, `.exclusive`) |
+| `TransactionConcurrency.swift` | Concurrency category enum |
 | `TransactionalCommand.swift` | Protocol for commands; includes default `serialize(transactionID:)` |

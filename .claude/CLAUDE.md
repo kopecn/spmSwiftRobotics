@@ -33,3 +33,4 @@ swift-format -i -r Sources/ Tests/
 | Build, test, format, CI, Docker | [`specs/workflow.md`](.claude/specs/workflow.md) | Build/test/deploy questions |
 | All deps, compat, add-dep process | [`specs/dependencies.md`](.claude/specs/dependencies.md) | Adding or auditing dependencies |
 | Open backlog + completed items | [`specs/fixes.md`](.claude/specs/fixes.md) | Picking up work, checking status |
+| TransactionHandler — upstream types, usage, events | [`specs/transactions.md`](.claude/specs/transactions.md) | TransactionHandler work, command-ack-response protocol |

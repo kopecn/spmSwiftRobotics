@@ -19,7 +19,6 @@ Sources/
 │   │   └── SpecificManipulators/UR/  # UR robot models, IKResult, URInverseKinematics
 │   ├── Support/                      # RobotRenderingAssetType
 │   ├── Trajectory/                   # WaveformStreamer, StreamWaveformProtocol
-│   └── TransactionHandler/           # readme.md only (types moved to FoundationTransactions)
 ├── SwiftRoboticAssets/               # AssetLoader + UR assets (urScript.script, waveform JSON)
 └── SwiftRoboticsSockets/
     ├── Support/                      # URNetworkConfiguration (port constants)
@@ -79,7 +78,7 @@ Sources/
 
 ### TransactionHandler (upstream — FoundationTransactions)
 
-Lives in `spmFoundationTools/FoundationTransactions`. See `Sources/SwiftRobotics/TransactionHandler/readme.md`.
+Lives in `spmFoundationTools/FoundationTransactions`. Full usage, concurrency model, events, and pipe wiring: see [`specs/transactions.md`](transactions.md).
 
 | Type | Role |
 |------|------|
